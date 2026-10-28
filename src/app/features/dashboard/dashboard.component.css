@@ -80,6 +80,60 @@
   color: var(--text-dim);
 }
 
+/* Dashboard Fast-Moving Products Section */
+.dash-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.dash-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.dash-section-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin: 0;
+}
+
+.dash-section-sub {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin: 0.2rem 0 0 0;
+}
+
+.dash-link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--primary-light);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  color: #60a5fa;
+  padding: 0.45rem 0.95rem;
+  border-radius: var(--radius-md);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dash-link-btn:hover {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+  transform: translateX(2px);
+}
+
+.dash-products-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+}
+
 .recent-sales-card {
   padding: 1.5rem;
   overflow: hidden;
@@ -201,8 +255,25 @@
     font-size: 0.7rem;
   }
 
+  .dash-section-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .dash-products-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.65rem;
+  }
+
   .sales-table {
     min-width: 560px;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1024px) {
+  .dash-products-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 

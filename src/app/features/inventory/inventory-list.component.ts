@@ -2,6 +2,7 @@ import { Component, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { PaginationComponent } from '../../shared/components/pagination/pagination.component';
+import { ProductCardComponent } from '../../shared/components/product-card/product-card.component';
 
 export interface InventoryItem {
   id: string;
@@ -29,16 +30,32 @@ export interface StockMovementRecord {
 @Component({
   selector: 'app-inventory-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, PaginationComponent],
+  imports: [CommonModule, FormsModule, PaginationComponent, ProductCardComponent],
   templateUrl: './inventory-list.component.html',
   styleUrl: './inventory-list.component.css',
 })
 export class InventoryListComponent {
   activeTab = signal<'stock' | 'movements'>('stock');
+  stockViewMode = signal<'table' | 'grid'>('table');
   searchQuery = signal<string>('');
   onlyLowStock = signal<boolean>(false);
   currentPage = signal<number>(1);
   pageSize = signal<number>(10);
+
+  setStockViewMode(mode: 'table' | 'grid') {
+    this.stockViewMode.set(mode);
+  }
+
+  toCardProduct(item: InventoryItem) {
+    return {
+      id: item.id,
+      name: item.productName,
+      sku: item.sku,
+      stock: item.quantityOnHand,
+      price: item.unitCost,
+      category: item.category,
+    };
+  }
 
   // Adjustment Modal
   isAdjustModalOpen = signal<boolean>(false);

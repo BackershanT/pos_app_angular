@@ -26,6 +26,32 @@
     }
   </div>
 
+  <!-- Top Fast-Moving Products Grid -->
+  <div class="dash-section">
+    <div class="dash-section-head">
+      <div>
+        <h3 class="dash-section-title">Fast-Moving Register Products</h3>
+        <p class="dash-section-sub">Real-time stock velocity & quick terminal dispatch</p>
+      </div>
+      <button type="button" class="dash-link-btn" (click)="goToPos()">
+        <span>Open POS Terminal</span>
+        <i class="pi pi-arrow-right"></i>
+      </button>
+    </div>
+
+    <div class="dash-products-grid">
+      @for (prod of fastMovingProducts; track prod.id) {
+        <app-product-card
+          [product]="prod"
+          mode="compact"
+          [showCategory]="true"
+          (selected)="goToPos()"
+          (actionClick)="goToPos()"
+        />
+      }
+    </div>
+  </div>
+
   <!-- Recent Transactions Table -->
   <div class="recent-sales-card glass-panel">
     <div class="card-head">

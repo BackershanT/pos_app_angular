@@ -48,64 +48,118 @@
         />
         <span>Show Low Stock Only (&le; Reorder Level)</span>
       </label>
+
+      <!-- View Switcher -->
+      <div class="view-mode-toggle">
+        <button
+          type="button"
+          class="view-toggle-btn"
+          [class.active]="stockViewMode() === 'table'"
+          (click)="setStockViewMode('table')"
+          title="Table View"
+        >
+          <i class="pi pi-bars"></i>
+          <span>Table</span>
+        </button>
+        <button
+          type="button"
+          class="view-toggle-btn"
+          [class.active]="stockViewMode() === 'grid'"
+          (click)="setStockViewMode('grid')"
+          title="Stock Cards View"
+        >
+          <i class="pi pi-th-large"></i>
+          <span>Cards</span>
+        </button>
+      </div>
     </div>
 
-    <!-- Inventory Table -->
-    <div class="table-container glass-panel">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>SKU</th>
-            <th>Product Name</th>
-            <th>Category</th>
-            <th>On Hand</th>
-            <th>Reorder Level</th>
-            <th>Unit Cost</th>
-            <th>Total Cost Value</th>
-            <th>Status</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody>
+    @if (stockViewMode() === 'grid') {
+      <!-- Visual Stock Cards Grid -->
+      <div class="inventory-cards-wrapper">
+        <div class="catalog-products-grid">
           @for (item of paginatedInventory(); track item.id) {
-            <tr>
-              <td class="sku-cell">{{ item.sku }}</td>
-              <td class="bold-cell">{{ item.productName }}</td>
-              <td><span class="cat-chip">{{ item.category }}</span></td>
-              <td class="qty-cell">
-                <strong>{{ item.quantityOnHand }}</strong> units
-              </td>
-              <td>{{ item.reorderLevel }} units</td>
-              <td>{{ item.unitCost | number:'1.2-2' }} AED</td>
-              <td class="value-cell">{{ item.totalCostValuation | number:'1.2-2' }} AED</td>
-              <td>
-                @if (item.quantityOnHand <= 0) {
-                  <span class="badge out">Out of Stock</span>
-                } @else if (item.quantityOnHand <= item.reorderLevel) {
-                  <span class="badge low">Low Stock</span>
-                } @else {
-                  <span class="badge good">In Stock</span>
-                }
-              </td>
-              <td>
-                <button class="btn-sm-adjust" (click)="openAdjustModal(item)">
-                  <i class="pi pi-sliders-h"></i>
-                  <span>Adjust</span>
-                </button>
-              </td>
-            </tr>
+            <app-product-card
+              [product]="toCardProduct(item)"
+              mode="catalog"
+              [showCategory]="true"
+              (selected)="openAdjustModal(item)"
+              (actionClick)="openAdjustModal(item)"
+            />
+          } @empty {
+            <div class="empty-cards-state glass-panel">
+              <i class="pi pi-inbox"></i>
+              <p>No inventory records matching your query</p>
+            </div>
           }
-        </tbody>
-      </table>
+        </div>
 
-      <app-pagination
-        [totalRecords]="totalInventoryRecords()"
-        [pageSize]="pageSize()"
-        [currentPage]="currentPage()"
-        (pageChange)="currentPage.set($event)"
-        (pageSizeChange)="pageSize.set($event)"
-      />
-    </div>
+        <app-pagination
+          [totalRecords]="totalInventoryRecords()"
+          [pageSize]="pageSize()"
+          [currentPage]="currentPage()"
+          (pageChange)="currentPage.set($event)"
+          (pageSizeChange)="pageSize.set($event)"
+        />
+      </div>
+    } @else {
+      <!-- Inventory Table -->
+      <div class="table-container glass-panel">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>SKU</th>
+              <th>Product Name</th>
+              <th>Category</th>
+              <th>On Hand</th>
+              <th>Reorder Level</th>
+              <th>Unit Cost</th>
+              <th>Total Cost Value</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of paginatedInventory(); track item.id) {
+              <tr>
+                <td class="sku-cell">{{ item.sku }}</td>
+                <td class="bold-cell">{{ item.productName }}</td>
+                <td><span class="cat-chip">{{ item.category }}</span></td>
+                <td class="qty-cell">
+                  <strong>{{ item.quantityOnHand }}</strong> units
+                </td>
+                <td>{{ item.reorderLevel }} units</td>
+                <td>{{ item.unitCost | number:'1.2-2' }} AED</td>
+                <td class="value-cell">{{ item.totalCostValuation | number:'1.2-2' }} AED</td>
+                <td>
+                  @if (item.quantityOnHand <= 0) {
+                    <span class="badge out">Out of Stock</span>
+                  } @else if (item.quantityOnHand <= item.reorderLevel) {
+                    <span class="badge low">Low Stock</span>
+                  } @else {
+                    <span class="badge good">In Stock</span>
+                  }
+                </td>
+                <td>
+                  <button class="btn-sm-adjust" (click)="openAdjustModal(item)">
+                    <i class="pi pi-sliders-h"></i>
+                    <span>Adjust</span>
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+
+        <app-pagination
+          [totalRecords]="totalInventoryRecords()"
+          [pageSize]="pageSize()"
+          [currentPage]="currentPage()"
+          (pageChange)="currentPage.set($event)"
+          (pageSizeChange)="pageSize.set($event)"
+        />
+      </div>
+    }
   } @else {
     <!-- Movements Ledger Table -->
     <div class="table-container glass-panel">
