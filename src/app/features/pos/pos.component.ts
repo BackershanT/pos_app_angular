@@ -198,6 +198,14 @@ export class PosComponent implements OnInit {
     return this._products();
   }
 
+  get lastInvoice() {
+    return this.receipt;
+  }
+
+  async loadSupabaseCatalog() {
+    return this.loadCatalog();
+  }
+
   /** Reload the register whenever the operator switches branch. */
   private readonly storeSwitchEffect = effect(() => {
     const storeId = this.context.storeId();
@@ -231,7 +239,7 @@ export class PosComponent implements OnInit {
       async () => {
         const storeId = this.context.storeId();
         const [catalog, categoriesData] = await Promise.all([
-          this.productRepo.getBranchCatalog(storeId, {
+          this.productRepo.getProductsWithInventory(storeId, {
             limit: environment.pos.catalogPageSize,
           }),
           this.categoryRepo.getCategories(),

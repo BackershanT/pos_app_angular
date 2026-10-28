@@ -33,6 +33,8 @@ describe('PosComponent (UAE POS Register & Terminal Checkout)', () => {
           barcode: '6291041001',
           selling_price: 24.0,
           tax_rate: 0.05,
+          category_id: 'c1',
+          category_name: 'Coffee & Drinks',
           category_code: 'coffee',
           quantity_on_hand: 45,
         },
@@ -48,7 +50,16 @@ describe('PosComponent (UAE POS Register & Terminal Checkout)', () => {
   };
 
   const mockOrderRepo = {
-    completeSale: vi.fn().mockResolvedValue({ sale_id: 'sale-1', invoice_number: 'INV-001' }),
+    completeSale: vi.fn().mockResolvedValue({
+      sale_id: 'sale-1',
+      invoice_number: 'INV-001',
+      subtotal: 24.0,
+      discount_total: 0,
+      tax_total: 1.2,
+      grand_total: 25.2,
+      change_amount: 0,
+      is_idempotent_replay: false,
+    }),
   };
 
   beforeEach(async () => {
@@ -80,9 +91,9 @@ describe('PosComponent (UAE POS Register & Terminal Checkout)', () => {
   });
 
   it('should filter products by category', () => {
-    component.selectedCategory.set('coffee');
+    component.selectedCategory.set('c1');
     const filtered = component.filteredProducts();
-    expect(filtered.every((p) => p.category === 'coffee')).toBe(true);
+    expect(filtered.every((p) => p.categoryId === 'c1')).toBe(true);
   });
 
   it('should add product to cart and update calculation signals with UAE 5% VAT', () => {
@@ -142,6 +153,6 @@ describe('PosComponent (UAE POS Register & Terminal Checkout)', () => {
     expect(component.cart().length).toBe(0);
     expect(component.isSuccessModalOpen()).toBe(true);
     expect(component.lastInvoice()).toBeTruthy();
-    expect(component.lastInvoice()?.trn).toBe('100234892300003');
+    expect(component.lastInvoice()?.trn).toBe('100234891200003');
   });
 });

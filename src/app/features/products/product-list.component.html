@@ -2,14 +2,38 @@
   <!-- Header Bar -->
   <div class="page-header">
     <div>
-      <h2>Product Catalog & Master Data</h2>
-      <p class="page-subtitle">Manage SKUs, barcodes, cost, pricing, and 5% UAE VAT parameters</p>
+      <h2>Product Catalog &amp; Master Data</h2>
+      <p class="page-subtitle">
+        {{ context.storeName() }} • SKUs, barcodes, cost, pricing and per-item UAE VAT
+      </p>
     </div>
-    <button class="btn-primary" (click)="openAddModal()">
-      <i class="pi pi-plus"></i>
-      <span>Add New Product</span>
-    </button>
+    <div class="page-actions">
+      <button type="button" class="btn-ghost" (click)="retryLoad()" [disabled]="catalogState.isLoading()">
+        <i class="pi pi-refresh" [class.pi-spin]="catalogState.isLoading()"></i>
+        <span>Refresh</span>
+      </button>
+      <button class="btn-primary" (click)="openAddModal()">
+        <i class="pi pi-plus"></i>
+        <span>Add New Product</span>
+      </button>
+    </div>
   </div>
+
+  <!-- Catalog roll-up (always derived from loaded rows, never hard-coded) -->
+  @if (catalogState.isReady()) {
+    <div class="catalog-summary">
+      <span
+        ><strong>{{ products().length }}</strong> SKUs</span
+      >
+      <span
+        ><strong>{{ lowStockCount() }}</strong> at or below reorder level</span
+      >
+      <span
+        >Stock at cost <strong>{{ totalStockValue() | number: '1.2-2' }}</strong>
+        {{ context.currency() }}</span
+      >
+    </div>
+  }
 
   <!-- Filters & Search Toolbar -->
   <div class="toolbar-card glass-panel">
@@ -22,13 +46,26 @@
     />
 
     <div class="category-filter-chips">
-      @for (c of categories; track c) {
+      <button
+        class="filter-chip"
+        [class.active]="selectedCategory() === 'all'"
+        (click)="onCategorySelect('all')"
+      >
+        All Categories
+      </button>
+      @for (c of categories(); track c.id) {
         <button
           class="filter-chip"
-          [class.active]="selectedCategory() === c"
-          (click)="onCategorySelect(c)"
+          [class.active]="selectedCategory() === c.id"
+          (click)="onCategorySelect(c.id)"
         >
-          {{ c === 'all' ? 'All Categories' : c }}
+          {{ c.name }}
+        </button>
+      }
+      @if (isFiltered()) {
+        <button type="button" class="filter-chip clear" (click)="clearFilters()">
+          <i class="pi pi-times"></i>
+          <span>Clear</span>
         </button>
       }
     </div>
@@ -58,10 +95,19 @@
     </div>
   </div>
 
-  @if (viewMode() === 'grid') {
-    <!-- Visual Cards Grid View -->
-    <div class="cards-view-wrapper">
-      <div class="catalog-products-grid">
+  <app-data-state
+    [state]="catalogState"
+    [isFiltered]="isFiltered()"
+    [loadingMessage]="'Loading branch catalog...'"
+    errorTitle="Catalog unavailable"
+    emptyTitle="No products in this catalog"
+    emptyMessage="No SKUs are stored for this business yet. Add your first product to start selling."
+    emptyIcon="pi-box"
+    (retry)="retryLoad()"
+  >
+    @if (viewMode() === 'grid') {
+      <!-- Visual Cards Grid View -->
+      <div class="cards-view-wrapper">
         @for (item of paginatedProducts(); track item.id) {
           <app-product-card
             [product]="item"
@@ -73,101 +119,135 @@
           />
         } @empty {
           <div class="empty-cards-state glass-panel">
-            <i class="pi pi-inbox"></i>
-            <p>No products match your criteria</p>
+            <i class="pi pi-filter-slash"></i>
+            <p>Nothing matches your search or category filter.</p>
+            <button type="button" class="btn-ghost" (click)="clearFilters()">
+              <i class="pi pi-times"></i>
+              <span>Clear filters</span>
+            </button>
           </div>
         }
+
+        <!-- Reusable Pagination Component -->
+        <app-pagination
+          [totalRecords]="totalFilteredRecords()"
+          [pageSize]="pageSize()"
+          [currentPage]="currentPage()"
+          (pageChange)="currentPage.set($event)"
+          (pageSizeChange)="pageSize.set($event)"
+        />
       </div>
-
-      <!-- Reusable Pagination Component -->
-      <app-pagination
-        [totalRecords]="totalFilteredRecords()"
-        [pageSize]="pageSize()"
-        [currentPage]="currentPage()"
-        (pageChange)="currentPage.set($event)"
-        (pageSizeChange)="pageSize.set($event)"
-      />
-    </div>
-  } @else {
-    <!-- Products Data Table View -->
-    <div class="table-container glass-panel">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Product / SKU</th>
-            <th>Barcode</th>
-            <th>Category</th>
-            <th>Cost Price</th>
-            <th>Selling Price</th>
-            <th>VAT (5%)</th>
-            <th>Margin</th>
-            <th>Current Stock</th>
-            <th>Status</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (item of paginatedProducts(); track item.id) {
+    } @else {
+      <!-- Products Data Table View -->
+      <div class="table-container glass-panel">
+        <table class="data-table">
+          <thead>
             <tr>
-              <td>
-                <div class="product-identity">
-                  <span class="product-name">{{ item.name }}</span>
-                  <app-badge variant="neutral">{{ item.sku }}</app-badge>
-                </div>
-              </td>
-              <td class="barcode-cell">
-                <i class="pi pi-barcode"></i>
-                <span>{{ item.barcode }}</span>
-              </td>
-              <td><app-badge variant="info">{{ item.category }}</app-badge></td>
-              <td>{{ item.costPrice | number:'1.2-2' }} AED</td>
-              <td class="selling-price-cell">{{ item.sellingPrice | number:'1.2-2' }} AED</td>
-              <td>{{ (item.sellingPrice * 0.05) | number:'1.2-2' }} AED</td>
-              <td class="margin-cell">
-                {{ (((item.sellingPrice - item.costPrice) / item.sellingPrice) * 100) | number:'1.0-0' }}%
-              </td>
-              <td>
-                <app-badge [variant]="item.stock === 0 ? 'danger' : (item.stock < 15 ? 'warning' : 'success')" [dot]="true">
-                  {{ item.stock }} units
-                </app-badge>
-              </td>
-              <td>
-                <app-badge [variant]="item.isActive ? 'success' : 'neutral'" [dot]="true">
-                  {{ item.isActive ? 'Active' : 'Inactive' }}
-                </app-badge>
-              </td>
-              <td>
-                <button
-                  type="button"
-                  class="btn-table-edit"
-                  (click)="openEditModal(item)"
-                  title="Edit product"
-                >
-                  <i class="pi pi-pencil"></i>
-                </button>
-              </td>
+              <th>Product / SKU</th>
+              <th>Barcode</th>
+              <th>Category</th>
+              <th>Cost Price</th>
+              <th>Selling Price</th>
+              <th>VAT</th>
+              <th>Margin</th>
+              <th>Current Stock</th>
+              <th>Status</th>
+              <th>Actions</th>
             </tr>
-          } @empty {
-            <tr>
-              <td colspan="10" class="empty-table-cell">
-                <i class="pi pi-inbox"></i>
-                <p>No products match your criteria</p>
-              </td>
-            </tr>
-          }
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            @for (item of paginatedProducts(); track item.id) {
+              <tr [class.row-archived]="!item.isActive">
+                <td>
+                  <div class="product-identity">
+                    <span class="product-name">{{ item.name }}</span>
+                    <app-badge variant="neutral">{{ item.sku }}</app-badge>
+                  </div>
+                </td>
+                <td class="barcode-cell">
+                  @if (item.barcode) {
+                    <i class="pi pi-barcode"></i>
+                    <span>{{ item.barcode }}</span>
+                  } @else {
+                    <span class="dim">No barcode</span>
+                  }
+                </td>
+                <td><app-badge variant="info">{{ item.category }}</app-badge></td>
+                <td>{{ item.costPrice | number: '1.2-2' }} {{ context.currency() }}</td>
+                <td class="selling-price-cell">
+                  {{ item.sellingPrice | number: '1.2-2' }} {{ context.currency() }}
+                </td>
+                <td>
+                  {{ vatAmountFor(item) | number: '1.2-2' }}
+                  <small class="dim">({{ taxPercentFor(item) }}%)</small>
+                </td>
+                <td class="margin-cell">{{ marginFor(item) }}%</td>
+                <td>
+                  @if (item.stock === null) {
+                    <app-badge variant="neutral">Untracked</app-badge>
+                  } @else {
+                    <app-badge
+                      [variant]="item.stock <= 0 ? 'danger' : (item.stock <= (item.reorderLevel ?? 15) ? 'warning' : 'success')"
+                      [dot]="true"
+                    >
+                      {{ item.stock }} units
+                    </app-badge>
+                  }
+                </td>
+                <td>
+                  <app-badge [variant]="item.isActive ? 'success' : 'neutral'" [dot]="true">
+                    {{ item.isActive ? 'Active' : 'Archived' }}
+                  </app-badge>
+                </td>
+                <td>
+                  <div class="row-actions">
+                    <button
+                      type="button"
+                      class="btn-table-edit"
+                      (click)="openEditModal(item)"
+                      title="Edit product"
+                    >
+                      <i class="pi pi-pencil"></i>
+                    </button>
+                    @if (item.isActive) {
+                      <button
+                        type="button"
+                        class="btn-table-edit danger"
+                        (click)="toggleActive(item)"
+                        [title]="'Archive ' + item.name"
+                      >
+                        <i class="pi pi-archive"></i>
+                      </button>
+                    }
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="10" class="empty-table-cell">
+                  <i class="pi pi-filter-slash"></i>
+                  <p>Nothing matches your search or category filter.</p>
+                  <button type="button" class="btn-ghost" (click)="clearFilters()">
+                    <i class="pi pi-times"></i>
+                    <span>Clear filters</span>
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
 
-      <!-- Reusable Pagination Component -->
-      <app-pagination
-        [totalRecords]="totalFilteredRecords()"
-        [pageSize]="pageSize()"
-        [currentPage]="currentPage()"
-        (pageChange)="currentPage.set($event)"
-        (pageSizeChange)="pageSize.set($event)"
-      />
-    </div>
-  }
+        <!-- Reusable Pagination Component -->
+        <app-pagination
+          [totalRecords]="totalFilteredRecords()"
+          [pageSize]="pageSize()"
+          [currentPage]="currentPage()"
+          (pageChange)="currentPage.set($event)"
+          (pageSizeChange)="pageSize.set($event)"
+        />
+      </div>
+    }
+  </app-data-state>
 </div>
 
 <!-- Add/Edit Product Reactive Form Modal -->
@@ -176,7 +256,7 @@
     <div class="modal-card glass-panel" (click)="$event.stopPropagation()">
       <div class="modal-head">
         <h3>{{ editingProduct() ? 'Edit Product Parameters' : 'Create New Product' }}</h3>
-        <button class="close-x" (click)="closeAddModal()">&times;</button>
+        <button class="close-x" (click)="closeAddModal()" [disabled]="isSaving()">&times;</button>
       </div>
 
       <form [formGroup]="productForm" (ngSubmit)="saveProduct()" class="product-form">
@@ -192,41 +272,75 @@
           </div>
 
           <div class="form-group">
-            <label>Barcode EAN/UPC *</label>
+            <label>Barcode EAN/UPC</label>
             <input type="text" formControlName="barcode" placeholder="e.g. 6291041099" />
           </div>
 
           <div class="form-group">
-            <label>Category *</label>
-            <select formControlName="category">
-              <option value="Beverages">Beverages</option>
-              <option value="Bakery">Bakery</option>
-              <option value="Main Meals">Main Meals</option>
-              <option value="Desserts">Desserts</option>
+            <label>Category</label>
+            <select formControlName="categoryId">
+              <option [ngValue]="null">Uncategorized</option>
+              @for (c of categories(); track c.id) {
+                <option [ngValue]="c.id">{{ c.name }}</option>
+              }
             </select>
           </div>
 
           <div class="form-group">
-            <label>Initial Stock (Units) *</label>
-            <input type="number" formControlName="stock" />
+            <label>VAT Rate (%) *</label>
+            <input type="number" formControlName="taxPercent" step="0.01" min="0" max="100" />
+            <small class="hint">Use 0 for zero-rated goods, 5 for standard UAE VAT.</small>
           </div>
 
           <div class="form-group">
-            <label>Cost Price (AED) *</label>
-            <input type="number" formControlName="costPrice" step="0.5" />
+            <label>Cost Price ({{ context.currency() }}) *</label>
+            <input type="number" formControlName="costPrice" step="0.01" min="0" />
           </div>
 
           <div class="form-group">
-            <label>Selling Price (AED) *</label>
-            <input type="number" formControlName="sellingPrice" step="0.5" />
+            <label>Selling Price ({{ context.currency() }}) *</label>
+            <input type="number" formControlName="sellingPrice" step="0.01" min="0" />
+          </div>
+
+          <div class="form-group">
+            <label>Availability</label>
+            <label class="checkbox-label">
+              <input type="checkbox" formControlName="isActive" />
+              <span>Visible on the POS register</span>
+            </label>
+            @if (editingProduct()) {
+              <small class="hint">Archived SKUs stay in sales history and reports.</small>
+            }
           </div>
         </div>
 
+        @if (!editingProduct()) {
+          <p class="form-note">
+            <i class="pi pi-info-circle"></i>
+            Opening balances are not set here — record them in the audited
+            <strong>Inventory &rarr; Adjust</strong> ledger so every unit has a movement trail.
+          </p>
+        }
+
+        @if (formError()) {
+          <div class="form-error" role="alert">
+            <i class="pi pi-exclamation-triangle"></i>
+            <span>{{ formError() }}</span>
+          </div>
+        }
+
         <div class="modal-foot">
-          <button type="button" class="btn-cancel" (click)="closeAddModal()">Cancel</button>
-          <button type="submit" class="btn-save" [disabled]="productForm.invalid">
-            <i class="pi pi-check"></i>
-            <span>{{ editingProduct() ? 'Save Changes' : 'Save Product to Catalog' }}</span>
+          <button type="button" class="btn-cancel" (click)="closeAddModal()" [disabled]="isSaving()">
+            Cancel
+          </button>
+          <button type="submit" class="btn-save" [disabled]="productForm.invalid || isSaving()">
+            @if (isSaving()) {
+              <i class="pi pi-spin pi-spinner"></i>
+              <span>Saving...</span>
+            } @else {
+              <i class="pi pi-check"></i>
+              <span>{{ editingProduct() ? 'Save Changes' : 'Save Product to Catalog' }}</span>
+            }
           </button>
         </div>
       </form>
