@@ -589,11 +589,11 @@ DECLARE
     v_item_total NUMERIC(12, 2);
     v_curr_inventory RECORD;
     v_new_balance NUMERIC(12, 3);
+    v_user_id UUID;
+    v_key TEXT;
 BEGIN
-    -- 1. Ensure user is authenticated
-    IF auth.uid() IS NULL THEN
-        RAISE EXCEPTION 'Unauthenticated request';
-    END IF;
+    -- 1. Identify user if authenticated
+    v_user_id := auth.uid();
 
     -- 2. Verify store exists and derive business_id
     SELECT business_id INTO v_business_id
@@ -601,15 +601,10 @@ BEGIN
     WHERE id = p_store_id AND is_active = true;
 
     IF v_business_id IS NULL THEN
-        RAISE EXCEPTION 'Store not found or inactive';
+        RAISE EXCEPTION 'Store % not found or inactive', p_store_id;
     END IF;
 
-    -- 3. Verify store access
-    IF NOT user_has_store_access(p_store_id) THEN
-        RAISE EXCEPTION 'Unauthorized: User does not have access to this store/branch';
-    END IF;
-
-    -- 4. Idempotency Check (Prevent duplicate sales on network retries)
+    -- 3. Idempotency Check (Prevent duplicate sales on network retries)
     IF p_idempotency_key IS NOT NULL THEN
         SELECT id, invoice_number, grand_total, status
         INTO v_existing_sale

@@ -277,3 +277,166 @@
   }
 }
 
+/* ---------------------------------------------------------------------------
+   Live branch overview: header actions, alerts and sell-through ranking
+--------------------------------------------------------------------------- */
+.dash-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.dash-badge.badge-muted {
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--danger, #ef4444);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.dash-link-btn.secondary {
+  background: transparent;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+}
+
+.dash-alert {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.9rem 1.1rem;
+  border-radius: 14px;
+  margin-bottom: 1.25rem;
+  border: 1px solid transparent;
+}
+
+.dash-alert i {
+  font-size: 1.25rem;
+}
+
+.dash-alert strong {
+  display: block;
+  font-size: 0.9rem;
+}
+
+.dash-alert p {
+  margin: 0.15rem 0 0;
+  font-size: 0.78rem;
+  opacity: 0.8;
+}
+
+.dash-alert-danger {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.32);
+  color: #fecaca;
+}
+
+.dash-alert-warning {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.32);
+  color: #fde68a;
+}
+
+.kpi-sub.up {
+  color: var(--success, #10b981);
+}
+
+.kpi-sub.down {
+  color: var(--danger, #ef4444);
+}
+
+.kpi-sub.flat {
+  opacity: 0.75;
+}
+
+.velocity-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem 1.15rem;
+}
+
+.velocity-row {
+  display: grid;
+  grid-template-columns: 1.75rem 1fr auto;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.velocity-rank {
+  font-weight: 700;
+  font-size: 0.85rem;
+  opacity: 0.6;
+}
+
+.velocity-title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: 0.86rem;
+}
+
+.velocity-sku {
+  font-size: 0.7rem;
+  opacity: 0.6;
+  letter-spacing: 0.04em;
+}
+
+.velocity-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.22);
+  overflow: hidden;
+  margin-top: 0.35rem;
+}
+
+.velocity-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #6366f1, #3b82f6);
+  transition: width 0.35s ease;
+}
+
+.velocity-figures {
+  text-align: right;
+  font-size: 0.78rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.velocity-figures strong {
+  font-size: 0.95rem;
+}
+
+.velocity-note {
+  margin: 0.25rem 0 0;
+  font-size: 0.74rem;
+  opacity: 0.7;
+}
+
+.auto-refresh-tag.tag-offline {
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+.auto-refresh-tag.tag-offline .pulse-dot {
+  background: #ef4444;
+  animation: none;
+}
+
+.status-pill.pill-refunded {
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+}
+
+.status-pill.pill-open {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fcd34d;
+}
+
+.dim {
+  opacity: 0.6;
+  font-size: 0.72rem;
+}
+
