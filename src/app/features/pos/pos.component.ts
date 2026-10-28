@@ -11,6 +11,7 @@ import { ProductCardComponent, BaseProductCardInput } from '../../shared/compone
 import { ProductRepository } from '../../data-access/repositories/product.repository';
 import { CategoryRepository } from '../../data-access/repositories/category.repository';
 import { OrderRepository } from '../../data-access/repositories/order.repository';
+import { RealtimeService } from '../../data-access/supabase/realtime.service';
 
 export interface CatalogProduct {
   id: string;
