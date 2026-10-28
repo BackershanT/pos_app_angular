@@ -63,6 +63,7 @@
         <app-product-card
           [product]="product"
           mode="pos"
+          [showCategory]="true"
           [cartQuantity]="getCartQuantity(product.id)"
           (selected)="addToCart($event)"
           (actionClick)="addToCart($event)"

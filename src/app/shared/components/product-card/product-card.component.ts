@@ -61,7 +61,16 @@ export class ProductCardComponent {
   readonly name = computed(() => this.product().name || 'Unnamed Product');
   readonly sku = computed(() => this.product().sku || '');
   readonly barcode = computed(() => this.product().barcode || '');
-  readonly category = computed(() => this.product().category || '');
+  readonly category = computed(() => {
+    const raw = this.product().category || '';
+    if (!raw) return '';
+    const lower = raw.toLowerCase();
+    if (lower === 'coffee') return 'Coffee';
+    if (lower === 'bakery') return 'Bakery';
+    if (lower === 'sandwiches') return 'Sandwich';
+    if (lower === 'desserts') return 'Dessert';
+    return raw.charAt(0).toUpperCase() + raw.slice(1);
+  });
 
   readonly price = computed(() => {
     const p = this.product();
