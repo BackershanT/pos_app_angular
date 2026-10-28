@@ -1,8 +1,10 @@
 export const environment = {
   production: true,
+  supabaseUrl: 'https://vurjengmqgudzibnfulo.supabase.co',
+  supabaseKey: 'sb_publishable_TMXWo5xOfWDPWnEfBu8rjA_P651hV3d',
   supabase: {
-    url: 'https://your-production-project.supabase.co',
-    anonKey: 'your-production-anon-key',
+    url: 'https://vurjengmqgudzibnfulo.supabase.co',
+    anonKey: 'sb_publishable_TMXWo5xOfWDPWnEfBu8rjA_P651hV3d',
   },
   pos: {
     defaultCurrency: 'AED',
