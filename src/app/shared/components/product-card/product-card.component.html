@@ -10,7 +10,7 @@
   (keydown)="onKeyDown($event)"
   tabindex="0"
   role="button"
-  [attr.aria-label]="name() + ', Price: ' + (price() | currencyFormat) + ', Stock: ' + stock()"
+  [attr.aria-label]="name() + ', Price: ' + (price() | currencyFormat) + ', ' + stockLabel()"
 >
   <!-- Card Visual Header -->
   <div class="card-icon-wrapper" [style.background]="color() + '22'">
@@ -33,6 +33,8 @@
       >
         @if (isOutOfStock()) {
           <span>Sold Out</span>
+        } @else if (!isStockTracked()) {
+          <span class="untracked-badge">On demand</span>
         } @else if (isLowStock()) {
           <span class="pulse-warning"></span>
           <span>{{ stock() }} left</span>
