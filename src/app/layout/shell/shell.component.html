@@ -1,0 +1,49 @@
+<div class="app-layout" [class.mobile-sidebar-open]="layout.isMobileSidebarOpen()">
+  <!-- Backdrop for mobile/tablet drawer -->
+  @if (layout.isMobileSidebarOpen()) {
+    <div
+      class="sidebar-backdrop"
+      (click)="layout.closeSidebar()"
+      aria-hidden="true"
+    ></div>
+  }
+
+  <!-- Sidebar Container with off-canvas slide support -->
+  <aside class="sidebar-wrapper" [class.open]="layout.isMobileSidebarOpen()">
+    <app-sidebar />
+  </aside>
+
+  <!-- Main Viewport -->
+  <div class="main-wrapper">
+    <app-topbar />
+    <main class="content-area">
+      <router-outlet />
+    </main>
+  </div>
+
+  <!-- Global Loading Spinner Overlay -->
+  @if (loading.isLoading()) {
+    <app-loading-spinner [isOverlay]="true" message="Communicating with Supabase Backend..." />
+  }
+
+  <!-- Global Toast Notification Container -->
+  <div class="toast-stack">
+    @for (toast of notification.toasts(); track toast.id) {
+      <div class="toast-item" [class]="toast.type" (click)="notification.dismiss(toast.id)">
+        <div class="toast-icon">
+          @switch (toast.type) {
+            @case ('success') { <i class="pi pi-check-circle"></i> }
+            @case ('error') { <i class="pi pi-times-circle"></i> }
+            @case ('warning') { <i class="pi pi-exclamation-triangle"></i> }
+            @default { <i class="pi pi-info-circle"></i> }
+          }
+        </div>
+        <div class="toast-body">
+          <strong class="toast-title">{{ toast.title }}</strong>
+          <p class="toast-message">{{ toast.message }}</p>
+        </div>
+        <button class="toast-close" (click)="notification.dismiss(toast.id); $event.stopPropagation()">&times;</button>
+      </div>
+    }
+  </div>
+</div>

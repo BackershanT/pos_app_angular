@@ -1,0 +1,61 @@
+<div class="dashboard-container">
+  <div class="dash-header">
+    <div>
+      <h2>Operational Intelligence</h2>
+      <p class="dash-subtitle">Dubai Mall Branch • Real-time terminal overview</p>
+    </div>
+    <div class="dash-badge">
+      <i class="pi pi-check-circle"></i>
+      <span>Tax Period: Q4 2026 Active</span>
+    </div>
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="kpi-grid">
+    @for (stat of stats; track stat.title) {
+      <div class="kpi-card glass-panel">
+        <div class="kpi-icon" [style.background]="stat.color + '22'" [style.color]="stat.color">
+          <i [class]="stat.icon"></i>
+        </div>
+        <div class="kpi-content">
+          <span class="kpi-title">{{ stat.title }}</span>
+          <h3 class="kpi-val">{{ stat.value }}</h3>
+          <span class="kpi-sub">{{ stat.sub }}</span>
+        </div>
+      </div>
+    }
+  </div>
+
+  <!-- Recent Transactions Table -->
+  <div class="recent-sales-card glass-panel">
+    <div class="card-head">
+      <h3>Recent Terminal Transactions</h3>
+      <span class="auto-refresh-tag"><span class="pulse-dot"></span> Live Stream</span>
+    </div>
+
+    <table class="sales-table">
+      <thead>
+        <tr>
+          <th>Invoice #</th>
+          <th>Cashier</th>
+          <th>Items</th>
+          <th>Total (AED)</th>
+          <th>Status</th>
+          <th>Time</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (sale of recentSales; track sale.invoice) {
+          <tr>
+            <td class="inv-cell">{{ sale.invoice }}</td>
+            <td>{{ sale.cashier }}</td>
+            <td>{{ sale.items }} items</td>
+            <td class="total-cell">{{ sale.total | number:'1.2-2' }} AED</td>
+            <td><span class="status-pill">{{ sale.status }}</span></td>
+            <td class="time-cell">{{ sale.time }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

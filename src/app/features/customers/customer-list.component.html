@@ -1,0 +1,111 @@
+<div class="feature-page">
+  <!-- Header Bar -->
+  <div class="page-header">
+    <div>
+      <h2>Customer Accounts & Loyalty CRM</h2>
+      <p class="page-subtitle">Manage customer profiles, loyalty balance, and purchase frequency</p>
+    </div>
+    <button class="btn-primary" (click)="openAddModal()">
+      <i class="pi pi-user-plus"></i>
+      <span>Add New Customer</span>
+    </button>
+  </div>
+
+  <!-- Search Toolbar -->
+  <div class="toolbar-card glass-panel">
+    <div class="search-input-wrap">
+      <i class="pi pi-search"></i>
+      <input
+        type="text"
+        placeholder="Search by Name, Phone, or Email..."
+        [value]="searchQuery()"
+        (input)="searchQuery.set($any($event.target).value); currentPage.set(1)"
+      />
+    </div>
+  </div>
+
+  <!-- Customers Table -->
+  <div class="table-container glass-panel">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Customer Name</th>
+          <th>Phone Number</th>
+          <th>Email Address</th>
+          <th>Loyalty Points</th>
+          <th>Total Visits</th>
+          <th>Lifetime Spent</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (c of paginatedCustomers(); track c.id) {
+          <tr>
+            <td class="bold-cell">{{ c.name }}</td>
+            <td class="phone-cell"><i class="pi pi-phone"></i> {{ c.phone }}</td>
+            <td class="email-cell">{{ c.email }}</td>
+            <td>
+              <span class="loyalty-badge">
+                <i class="pi pi-star-fill"></i>
+                {{ c.loyaltyPoints }} pts
+              </span>
+            </td>
+            <td>{{ c.totalOrders }} orders</td>
+            <td class="spent-cell">{{ c.totalSpent | number:'1.2-2' }} AED</td>
+            <td><span class="active-badge">Active</span></td>
+          </tr>
+        }
+      </tbody>
+    </table>
+
+    <app-pagination
+      [totalRecords]="totalRecords()"
+      [pageSize]="pageSize()"
+      [currentPage]="currentPage()"
+      (pageChange)="currentPage.set($event)"
+      (pageSizeChange)="pageSize.set($event)"
+    />
+  </div>
+</div>
+
+<!-- Add Customer Modal -->
+@if (isAddModalOpen()) {
+  <div class="modal-backdrop" (click)="closeAddModal()">
+    <div class="modal-card glass-panel" (click)="$event.stopPropagation()">
+      <div class="modal-head">
+        <h3>Register New Customer</h3>
+        <button class="close-x" (click)="closeAddModal()">&times;</button>
+      </div>
+
+      <form [formGroup]="customerForm" (ngSubmit)="saveCustomer()" class="modal-form">
+        <div class="form-group">
+          <label>Full Name *</label>
+          <input type="text" formControlName="name" placeholder="e.g. Sultan Al-Qasimi" />
+        </div>
+
+        <div class="form-group">
+          <label>Mobile Number (with country code) *</label>
+          <input type="text" formControlName="phone" placeholder="+971 50 123 4567" />
+        </div>
+
+        <div class="form-group">
+          <label>Email Address</label>
+          <input type="email" formControlName="email" placeholder="sultan@example.ae" />
+        </div>
+
+        <div class="form-group">
+          <label>Tax TRN (Optional for B2B Customers)</label>
+          <input type="text" formControlName="taxId" placeholder="100XXXXXXXXXXXX" />
+        </div>
+
+        <div class="modal-foot">
+          <button type="button" class="btn-cancel" (click)="closeAddModal()">Cancel</button>
+          <button type="submit" class="btn-save" [disabled]="customerForm.invalid">
+            <i class="pi pi-check"></i>
+            <span>Register & Award 50 Pts</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}

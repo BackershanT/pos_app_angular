@@ -1,0 +1,318 @@
+<div class="pos-container">
+  <!-- Mobile Segmented View Tabs (< 768px) -->
+  <div class="mobile-pos-tabs">
+    <button
+      type="button"
+      class="mobile-tab-btn"
+      [class.active]="layout.activeMobilePosTab() === 'catalog'"
+      (click)="layout.setActiveMobilePosTab('catalog')"
+    >
+      <i class="pi pi-th-large"></i>
+      <span>Products Catalog</span>
+    </button>
+    <button
+      type="button"
+      class="mobile-tab-btn"
+      [class.active]="layout.activeMobilePosTab() === 'cart'"
+      (click)="layout.setActiveMobilePosTab('cart')"
+    >
+      <i class="pi pi-shopping-bag"></i>
+      <span>Current Ticket ({{ cart().length }})</span>
+      @if (cart().length > 0) {
+        <span class="tab-badge">{{ cartCalculations().grandTotal | currencyFormat }}</span>
+      }
+    </button>
+  </div>
+
+  <!-- Left Side: Catalog & Search & Filters -->
+  <section class="pos-catalog" [class.mobile-hidden]="layout.activeMobilePosTab() === 'cart'">
+    <!-- Categories Navigation Pills -->
+    <div class="category-pills">
+      @for (cat of categories; track cat.id) {
+        <button
+          class="cat-pill"
+          [class.active]="selectedCategory() === cat.id"
+          (click)="selectedCategory.set(cat.id)"
+        >
+          <i [class]="cat.icon"></i>
+          <span>{{ cat.name }}</span>
+        </button>
+      }
+    </div>
+
+    <!-- Products Grid -->
+    <div class="products-grid">
+      @for (product of filteredProducts(); track product.id) {
+        <div class="product-card" (click)="addToCart(product)">
+          <div class="card-icon-wrapper" [style.background]="product.color + '22'">
+            <span class="product-emoji">{{ product.icon }}</span>
+            <span class="stock-badge" [class.low-stock]="product.stock < 15">
+              {{ product.stock }} left
+            </span>
+          </div>
+          <div class="card-details">
+            <span class="product-sku">{{ product.sku }}</span>
+            <h4 class="product-title">{{ product.name | truncate:24:true }}</h4>
+            <div class="card-price-row">
+              <span class="product-price">{{ product.price | currencyFormat }}</span>
+              <button class="add-circle-btn" title="Add to cart">
+                <i class="pi pi-plus"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      } @empty {
+        <div class="empty-state">
+          <i class="pi pi-search"></i>
+          <p>No products found matching your search</p>
+        </div>
+      }
+    </div>
+  </section>
+
+  <!-- Right Side: Active Cart & Calculation Drawer -->
+  <aside class="pos-cart-panel glass-panel" [class.mobile-hidden]="layout.activeMobilePosTab() === 'catalog'">
+    <!-- Cart Header -->
+    <div class="cart-header">
+      <div class="cart-title-row">
+        <div class="cart-title">
+          <i class="pi pi-shopping-bag"></i>
+          <h3>Current Ticket</h3>
+        </div>
+        <button
+          type="button"
+          class="mobile-back-catalog-btn"
+          (click)="layout.setActiveMobilePosTab('catalog')"
+          title="Back to Products Catalog"
+        >
+          <i class="pi pi-arrow-left"></i>
+          <span>Add Products</span>
+        </button>
+        <span class="cart-count-badge">{{ cart().length }} items</span>
+      </div>
+      <div class="customer-picker">
+        <i class="pi pi-user"></i>
+        <span>Walk-in Customer (B2C)</span>
+        <i class="pi pi-chevron-down pick-icon"></i>
+      </div>
+    </div>
+
+    <!-- Cart Item List -->
+    <div class="cart-items-list">
+      @for (item of cart(); track item.product.id) {
+        <div class="cart-item-row">
+          <div class="cart-item-info">
+            <span class="item-name">{{ item.product.name }}</span>
+            <span class="item-unit-price">{{ item.product.price | number:'1.2-2' }} AED each</span>
+          </div>
+
+          <div class="cart-stepper">
+            <button class="step-btn" (click)="decrementQuantity(item)">
+              <i class="pi pi-minus"></i>
+            </button>
+            <span class="step-val">{{ item.quantity }}</span>
+            <button class="step-btn" (click)="incrementQuantity(item)">
+              <i class="pi pi-plus"></i>
+            </button>
+          </div>
+
+          <div class="cart-item-total">
+            <span>{{ (item.product.price * item.quantity) | currencyFormat }}</span>
+            <button class="remove-btn" (click)="removeFromCart(item)" title="Remove item">
+              <i class="pi pi-trash"></i>
+            </button>
+          </div>
+        </div>
+      } @empty {
+        <div class="cart-empty-state">
+          <i class="pi pi-shopping-cart"></i>
+          <p>The cart is currently empty</p>
+          <small>Scan a barcode or click a product on the left</small>
+        </div>
+      }
+    </div>
+
+    <!-- Calculations & Summary Breakdown -->
+    <div class="cart-summary">
+      <div class="summary-line">
+        <span>Subtotal</span>
+        <span>{{ cartCalculations().subtotal | currencyFormat }}</span>
+      </div>
+      <div class="summary-line vat-line">
+        <span>UAE VAT (5%) <small class="vat-tag">Included</small></span>
+        <span>{{ cartCalculations().taxTotal | currencyFormat }}</span>
+      </div>
+      @if (cartCalculations().discountTotal > 0) {
+        <div class="summary-line discount-line">
+          <span>Discount Applied</span>
+          <span>-{{ cartCalculations().discountTotal | currencyFormat }}</span>
+        </div>
+      }
+      <div class="summary-line grand-total-line">
+        <span>Total Payable</span>
+        <span class="grand-total-val">{{ cartCalculations().grandTotal | currencyFormat }}</span>
+      </div>
+    </div>
+
+    <!-- Cart Actions -->
+    <div class="cart-actions">
+      <button class="cart-btn secondary-btn" (click)="clearCart()" [disabled]="cart().length === 0">
+        <i class="pi pi-trash"></i>
+        <span>Clear</span>
+      </button>
+      <button class="cart-btn charge-btn" (click)="openPaymentModal()" [disabled]="cart().length === 0">
+        <i class="pi pi-credit-card"></i>
+        <span>Pay {{ cartCalculations().grandTotal | currencyFormat }}</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Mobile Floating Cart Review Bar (< 768px when on catalog tab) -->
+  @if (cart().length > 0 && layout.activeMobilePosTab() === 'catalog') {
+    <div class="mobile-floating-cart-bar" (click)="layout.setActiveMobilePosTab('cart')">
+      <div class="floating-cart-info">
+        <span class="floating-badge">{{ cart().length }}</span>
+        <div class="floating-text">
+          <strong class="floating-total">{{ cartCalculations().grandTotal | currencyFormat }}</strong>
+          <small class="floating-sub">Tap to view ticket & checkout</small>
+        </div>
+      </div>
+      <button type="button" class="floating-action-btn">
+        <span>View Ticket</span>
+        <i class="pi pi-arrow-right"></i>
+      </button>
+    </div>
+  }
+</div>
+
+<!-- Payment Tender Modal -->
+@if (isPaymentModalOpen()) {
+  <div class="modal-backdrop" (click)="closePaymentModal()">
+    <div class="payment-modal glass-panel" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Process Payment</h3>
+        <button class="close-btn" (click)="closePaymentModal()">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="pay-total-card">
+          <span class="pay-label">Total Due (with 5% VAT)</span>
+          <h2 class="pay-amount">{{ cartCalculations().grandTotal | number:'1.2-2' }} AED</h2>
+        </div>
+
+        <div class="payment-methods-grid">
+          <button
+            class="method-btn"
+            [class.active]="paymentMethod() === 'card'"
+            (click)="paymentMethod.set('card')"
+          >
+            <i class="pi pi-credit-card"></i>
+            <span>Card / Apple Pay</span>
+          </button>
+          <button
+            class="method-btn"
+            [class.active]="paymentMethod() === 'cash'"
+            (click)="paymentMethod.set('cash')"
+          >
+            <i class="pi pi-money-bill"></i>
+            <span>Cash</span>
+          </button>
+          <button
+            class="method-btn"
+            [class.active]="paymentMethod() === 'split'"
+            (click)="paymentMethod.set('split')"
+          >
+            <i class="pi pi-wallet"></i>
+            <span>Split Tender</span>
+          </button>
+        </div>
+
+        @if (paymentMethod() === 'cash') {
+          <div class="cash-input-group">
+            <label>Amount Tendered (AED):</label>
+            <input
+              type="number"
+              class="tender-input"
+              appAutoFocus
+              [selectText]="true"
+              [ngModel]="amountTendered()"
+              (ngModelChange)="amountTendered.set($event)"
+            />
+            <div class="change-display">
+              <span>Change Due:</span>
+              <strong [class.has-change]="changeDue() > 0">{{ changeDue() | number:'1.2-2' }} AED</strong>
+            </div>
+          </div>
+        }
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-cancel" (click)="closePaymentModal()">Cancel</button>
+        <button class="btn-confirm-pay" (click)="confirmSale()">
+          <i class="pi pi-check"></i>
+          <span>Authorize & Print Invoice</span>
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Receipt / Invoice Confirmation Modal -->
+@if (isSuccessModalOpen()) {
+  <div class="modal-backdrop">
+    <div class="receipt-modal glass-panel">
+      <div class="success-icon-banner">
+        <i class="pi pi-check-circle"></i>
+        <h3>Sale Completed Successfully!</h3>
+        <p>Invoice #{{ lastInvoice()?.invoiceNumber }}</p>
+      </div>
+
+      <!-- Thermal Receipt Preview -->
+      <div class="thermal-receipt">
+        <div class="receipt-header">
+          <h4>AEROPOS CAFE LLC</h4>
+          <p>Dubai Mall, Ground Floor, Dubai, UAE</p>
+          <p>TRN: {{ lastInvoice()?.trn }}</p>
+          <h5>SIMPLIFIED TAX INVOICE</h5>
+          <small>{{ lastInvoice()?.date | dateFormat:'receipt' }}</small>
+        </div>
+        <hr class="receipt-divider" />
+        <div class="receipt-items">
+          @for (item of lastInvoice()?.items; track item.product.id) {
+            <div class="receipt-item-row">
+              <span>{{ item.quantity }}x {{ item.product.name | truncate:24:true }}</span>
+              <span>{{ (item.product.price * item.quantity) | currencyFormat }}</span>
+            </div>
+          }
+        </div>
+        <hr class="receipt-divider" />
+        <div class="receipt-totals">
+          <div class="receipt-row"><span>Subtotal:</span><span>{{ lastInvoice()?.subtotal | currencyFormat }}</span></div>
+          <div class="receipt-row"><span>VAT (5%):</span><span>{{ lastInvoice()?.vat | currencyFormat }}</span></div>
+          <div class="receipt-row total-bold"><span>TOTAL:</span><span>{{ lastInvoice()?.grandTotal | currencyFormat }}</span></div>
+          <div class="receipt-row"><span>Paid via {{ lastInvoice()?.method }}:</span><span>{{ lastInvoice()?.tendered | currencyFormat }}</span></div>
+          @if (lastInvoice()?.change > 0) {
+            <div class="receipt-row"><span>Change Given:</span><span>{{ lastInvoice()?.change | currencyFormat }}</span></div>
+          }
+        </div>
+        <div class="receipt-footer">
+          <p>شكراً لزيارتكم • Thank You For Visiting</p>
+          <div class="mock-qr">
+            <i class="pi pi-qrcode"></i>
+            <span>ZATCA / FTA Compliant QR</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="receipt-actions">
+        <button class="btn-print" (click)="printReceipt()">
+          <i class="pi pi-print"></i>
+          <span>Print Receipt [F8]</span>
+        </button>
+        <button class="btn-done" (click)="closeSuccessModal()">
+          <span>Next Transaction [Enter]</span>
+        </button>
+      </div>
+    </div>
+  </div>
+}

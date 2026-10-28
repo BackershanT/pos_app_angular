@@ -1,0 +1,114 @@
+<div class="feature-page">
+  <!-- Header Bar -->
+  <div class="page-header">
+    <div>
+      <h2>Audited Financial & Tax Intelligence</h2>
+      <p class="page-subtitle">UAE Federal Tax Authority (FTA) 5% VAT summary & tender reconciliation</p>
+    </div>
+    <div class="header-actions">
+      <div class="period-toggle">
+        <button [class.active]="selectedPeriod() === 'today'" (click)="selectedPeriod.set('today')">Today</button>
+        <button [class.active]="selectedPeriod() === 'month'" (click)="selectedPeriod.set('month')">This Month</button>
+        <button [class.active]="selectedPeriod() === 'q4'" (click)="selectedPeriod.set('q4')">Q4 Filing Period</button>
+      </div>
+      <button class="btn-primary" (click)="printReport()">
+        <i class="pi pi-print"></i>
+        <span>Print Tax Report</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- UAE VAT Audit Box -->
+  <div class="vat-audit-box glass-panel">
+    <div class="audit-head">
+      <div class="audit-title">
+        <i class="pi pi-shield"></i>
+        <div>
+          <h3>FTA UAE Form VAT201 Declaration Summary</h3>
+          <p>Tax Registration Number (TRN): <strong>{{ vatAudit.taxRegNumber }}</strong> • Period: {{ vatAudit.filingPeriod }}</p>
+        </div>
+      </div>
+      <span class="compliant-badge"><i class="pi pi-check"></i> Audit Ready</span>
+    </div>
+
+    <div class="audit-grid">
+      <div class="audit-card">
+        <span class="label">Gross Standard Supplies (5%)</span>
+        <h4>{{ vatAudit.standardSuppliesGross | number:'1.2-2' }} <small>AED</small></h4>
+        <span class="sub">Total retail tickets inclusive</span>
+      </div>
+      <div class="audit-card">
+        <span class="label">Net Taxable Supplies</span>
+        <h4>{{ vatAudit.standardSuppliesTaxable | number:'1.2-2' }} <small>AED</small></h4>
+        <span class="sub">Excluding 5% tax amount</span>
+      </div>
+      <div class="audit-card highlight">
+        <span class="label">Output VAT Collected (5%)</span>
+        <h4 class="vat-num">{{ vatAudit.outputVat5Percent | number:'1.2-2' }} <small>AED</small></h4>
+        <span class="sub">Payable to Federal Tax Authority</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Two Column Analysis: Payment Tenders & Top Products -->
+  <div class="reports-columns">
+    <!-- Left Column: Payment Tenders -->
+    <div class="report-card glass-panel">
+      <div class="card-head">
+        <h3>Payment Reconciliation</h3>
+        <span class="card-tag">End-of-Day Audit</span>
+      </div>
+
+      <div class="tenders-list">
+        @for (pmt of paymentBreakdown; track pmt.method) {
+          <div class="tender-row">
+            <div class="tender-icon" [style.background]="pmt.color + '22'" [style.color]="pmt.color">
+              <i [class]="pmt.icon"></i>
+            </div>
+            <div class="tender-details">
+              <div class="tender-line-1">
+                <span class="method-name">{{ pmt.method }}</span>
+                <strong class="method-sum">{{ pmt.total | number:'1.2-2' }} AED</strong>
+              </div>
+              <div class="tender-line-2">
+                <div class="progress-track">
+                  <div class="progress-bar" [style.width.%]="pmt.percentage" [style.background]="pmt.color"></div>
+                </div>
+                <span class="percentage-label">{{ pmt.percentage }}% ({{ pmt.count }} tx)</span>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Right Column: Top Products -->
+    <div class="report-card glass-panel">
+      <div class="card-head">
+        <h3>Top Performing Items</h3>
+        <span class="card-tag">By Revenue</span>
+      </div>
+
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Item Name</th>
+            <th>Units Sold</th>
+            <th>Total Revenue</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of topSelling; track item.rank) {
+            <tr>
+              <td class="rank-cell">{{ item.rank }}</td>
+              <td class="bold-cell">{{ item.name }}</td>
+              <td>{{ item.soldQty }} sold</td>
+              <td class="revenue-cell">{{ item.revenue | number:'1.2-2' }} AED</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

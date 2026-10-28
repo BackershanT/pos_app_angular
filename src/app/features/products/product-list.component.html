@@ -1,0 +1,170 @@
+<div class="feature-page">
+  <!-- Header Bar -->
+  <div class="page-header">
+    <div>
+      <h2>Product Catalog & Master Data</h2>
+      <p class="page-subtitle">Manage SKUs, barcodes, cost, pricing, and 5% UAE VAT parameters</p>
+    </div>
+    <button class="btn-primary" (click)="openAddModal()">
+      <i class="pi pi-plus"></i>
+      <span>Add New Product</span>
+    </button>
+  </div>
+
+  <!-- Filters & Search Toolbar -->
+  <div class="toolbar-card glass-panel">
+    <div class="search-input-wrap">
+      <i class="pi pi-search"></i>
+      <input
+        type="text"
+        placeholder="Filter by Name, SKU, or Barcode..."
+        [value]="searchQuery()"
+        (input)="onSearch($event)"
+      />
+    </div>
+
+    <div class="category-filter-chips">
+      @for (c of categories; track c) {
+        <button
+          class="filter-chip"
+          [class.active]="selectedCategory() === c"
+          (click)="onCategorySelect(c)"
+        >
+          {{ c === 'all' ? 'All Categories' : c }}
+        </button>
+      }
+    </div>
+  </div>
+
+  <!-- Products Data Table -->
+  <div class="table-container glass-panel">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Product / SKU</th>
+          <th>Barcode</th>
+          <th>Category</th>
+          <th>Cost Price</th>
+          <th>Selling Price</th>
+          <th>VAT (5%)</th>
+          <th>Margin</th>
+          <th>Current Stock</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (item of paginatedProducts(); track item.id) {
+          <tr>
+            <td>
+              <div class="product-identity">
+                <span class="product-name">{{ item.name }}</span>
+                <span class="sku-badge">{{ item.sku }}</span>
+              </div>
+            </td>
+            <td class="barcode-cell">
+              <i class="pi pi-barcode"></i>
+              <span>{{ item.barcode }}</span>
+            </td>
+            <td><span class="category-pill">{{ item.category }}</span></td>
+            <td>{{ item.costPrice | number:'1.2-2' }} AED</td>
+            <td class="selling-price-cell">{{ item.sellingPrice | number:'1.2-2' }} AED</td>
+            <td>{{ (item.sellingPrice * 0.05) | number:'1.2-2' }} AED</td>
+            <td class="margin-cell">
+              {{ (((item.sellingPrice - item.costPrice) / item.sellingPrice) * 100) | number:'1.0-0' }}%
+            </td>
+            <td>
+              <span class="stock-indicator" [class.low]="item.stock < 15">
+                {{ item.stock }} units
+              </span>
+            </td>
+            <td>
+              <span class="status-badge" [class.active]="item.isActive">
+                {{ item.isActive ? 'Active' : 'Inactive' }}
+              </span>
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="9" class="empty-table-cell">
+              <i class="pi pi-inbox"></i>
+              <p>No products match your criteria</p>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+
+    <!-- Reusable Pagination Component -->
+    <app-pagination
+      [totalRecords]="totalFilteredRecords()"
+      [pageSize]="pageSize()"
+      [currentPage]="currentPage()"
+      (pageChange)="currentPage.set($event)"
+      (pageSizeChange)="pageSize.set($event)"
+    />
+  </div>
+</div>
+
+<!-- Add Product Reactive Form Modal -->
+@if (isAddModalOpen()) {
+  <div class="modal-backdrop" (click)="closeAddModal()">
+    <div class="modal-card glass-panel" (click)="$event.stopPropagation()">
+      <div class="modal-head">
+        <h3>Create New Product</h3>
+        <button class="close-x" (click)="closeAddModal()">&times;</button>
+      </div>
+
+      <form [formGroup]="productForm" (ngSubmit)="saveProduct()" class="product-form">
+        <div class="form-grid">
+          <div class="form-group span-2">
+            <label>Product Name *</label>
+            <input type="text" formControlName="name" placeholder="e.g. Saffron Iced Milk" />
+          </div>
+
+          <div class="form-group">
+            <label>SKU Code *</label>
+            <input type="text" formControlName="sku" placeholder="e.g. CF-009" />
+          </div>
+
+          <div class="form-group">
+            <label>Barcode EAN/UPC *</label>
+            <input type="text" formControlName="barcode" placeholder="e.g. 6291041099" />
+          </div>
+
+          <div class="form-group">
+            <label>Category *</label>
+            <select formControlName="category">
+              <option value="Beverages">Beverages</option>
+              <option value="Bakery">Bakery</option>
+              <option value="Main Meals">Main Meals</option>
+              <option value="Desserts">Desserts</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Initial Stock (Units) *</label>
+            <input type="number" formControlName="stock" />
+          </div>
+
+          <div class="form-group">
+            <label>Cost Price (AED) *</label>
+            <input type="number" formControlName="costPrice" step="0.5" />
+          </div>
+
+          <div class="form-group">
+            <label>Selling Price (AED) *</label>
+            <input type="number" formControlName="sellingPrice" step="0.5" />
+          </div>
+        </div>
+
+        <div class="modal-foot">
+          <button type="button" class="btn-cancel" (click)="closeAddModal()">Cancel</button>
+          <button type="submit" class="btn-save" [disabled]="productForm.invalid">
+            <i class="pi pi-check"></i>
+            <span>Save Product to Catalog</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}

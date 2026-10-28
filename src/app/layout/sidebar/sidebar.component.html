@@ -1,0 +1,79 @@
+<aside class="sidebar">
+  <!-- Brand / Logo -->
+  <div class="sidebar-brand">
+    <div class="brand-icon">
+      <i class="pi pi-bolt"></i>
+    </div>
+    <div class="brand-text">
+      <span class="brand-name">AeroPOS</span>
+      <span class="brand-badge">PRO • UAE</span>
+    </div>
+  </div>
+
+  <!-- Store Info Card -->
+  <div class="store-card">
+    <div class="store-avatar">
+      <i class="pi pi-shop"></i>
+    </div>
+    <div class="store-details">
+      <span class="store-title">{{ storeInfo().storeName }}</span>
+      <span class="store-sub">
+        <span class="status-dot" [class.offline]="!storeInfo().isOnline"></span>
+        {{ storeInfo().terminalId }} ({{ storeInfo().isOnline ? 'Online' : 'Offline' }})
+      </span>
+    </div>
+  </div>
+
+  <!-- Navigation Menu Grouped By Sections -->
+  <nav class="sidebar-nav">
+    @for (section of visibleSections(); track section.id) {
+      <div class="nav-section">
+        <div class="nav-section-label">{{ section.sectionTitle }}</div>
+        <div class="nav-section-items">
+          @for (item of section.items; track item.id) {
+            <a
+              [routerLink]="item.route"
+              routerLinkActive="active"
+              [routerLinkActiveOptions]="{ exact: !!item.exactMatch }"
+              class="nav-item"
+              [class.disabled]="item.disabled"
+              [title]="item.arabicLabel ? item.label + ' (' + item.arabicLabel + ')' : item.label"
+            >
+              <i [class]="item.icon"></i>
+              <div class="nav-item-content">
+                <span class="nav-label">{{ item.label }}</span>
+                @if (item.arabicLabel) {
+                  <span class="nav-arabic">{{ item.arabicLabel }}</span>
+                }
+              </div>
+
+              @if (item.badge) {
+                <span class="nav-badge" [class]="item.badge.variant || 'neutral'">
+                  {{ item.badge.text }}
+                </span>
+              } @else if (item.shortcut) {
+                <kbd class="nav-shortcut">{{ item.shortcut }}</kbd>
+              }
+            </a>
+          }
+        </div>
+      </div>
+    }
+  </nav>
+
+  <!-- Sidebar Footer / Cashier Info -->
+  <div class="sidebar-footer">
+    <div class="cashier-profile">
+      <div class="cashier-avatar">
+        {{ cashierProfile().initials }}
+      </div>
+      <div class="cashier-info">
+        <span class="cashier-name">{{ cashierProfile().fullName }}</span>
+        <span class="cashier-role">{{ cashierProfile().role }}</span>
+      </div>
+      <button class="logout-btn" title="End Shift & Logout" (click)="onLogout()">
+        <i class="pi pi-sign-out"></i>
+      </button>
+    </div>
+  </div>
+</aside>

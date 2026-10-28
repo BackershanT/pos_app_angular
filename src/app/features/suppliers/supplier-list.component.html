@@ -1,0 +1,115 @@
+<div class="feature-page">
+  <!-- Header Bar -->
+  <div class="page-header">
+    <div>
+      <h2>Vendor & Supplier Directory</h2>
+      <p class="page-subtitle">Procurement channels, supplier TRN verification, and purchase contacts</p>
+    </div>
+    <button class="btn-primary" (click)="openAddModal()">
+      <i class="pi pi-plus"></i>
+      <span>Add New Vendor</span>
+    </button>
+  </div>
+
+  <!-- Search Toolbar -->
+  <div class="toolbar-card glass-panel">
+    <div class="search-input-wrap">
+      <i class="pi pi-search"></i>
+      <input
+        type="text"
+        placeholder="Search Supplier Name, Contact, or TRN..."
+        [value]="searchQuery()"
+        (input)="searchQuery.set($any($event.target).value); currentPage.set(1)"
+      />
+    </div>
+  </div>
+
+  <!-- Suppliers Table -->
+  <div class="table-container glass-panel">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Supplier Company</th>
+          <th>Representative</th>
+          <th>Phone Contact</th>
+          <th>Email Address</th>
+          <th>Tax TRN</th>
+          <th>Active Orders</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (s of paginatedSuppliers(); track s.id) {
+          <tr>
+            <td class="bold-cell">{{ s.name }}</td>
+            <td>{{ s.contactPerson }}</td>
+            <td class="phone-cell"><i class="pi pi-phone"></i> {{ s.phone }}</td>
+            <td class="email-cell">{{ s.email }}</td>
+            <td class="trn-cell"><i class="pi pi-shield"></i> {{ s.taxNumber }}</td>
+            <td>
+              <span class="order-badge" [class.has-orders]="s.activeOrders > 0">
+                {{ s.activeOrders }} orders pending
+              </span>
+            </td>
+            <td><span class="active-badge">Verified</span></td>
+          </tr>
+        }
+      </tbody>
+    </table>
+
+    <app-pagination
+      [totalRecords]="totalRecords()"
+      [pageSize]="pageSize()"
+      [currentPage]="currentPage()"
+      (pageChange)="currentPage.set($event)"
+      (pageSizeChange)="pageSize.set($event)"
+    />
+  </div>
+</div>
+
+<!-- Add Supplier Modal -->
+@if (isAddModalOpen()) {
+  <div class="modal-backdrop" (click)="closeAddModal()">
+    <div class="modal-card glass-panel" (click)="$event.stopPropagation()">
+      <div class="modal-head">
+        <h3>Register New Vendor</h3>
+        <button class="close-x" (click)="closeAddModal()">&times;</button>
+      </div>
+
+      <form [formGroup]="supplierForm" (ngSubmit)="saveSupplier()" class="modal-form">
+        <div class="form-group">
+          <label>Company Name *</label>
+          <input type="text" formControlName="name" placeholder="e.g. Dubai Roasters Co." />
+        </div>
+
+        <div class="form-group">
+          <label>Contact Person *</label>
+          <input type="text" formControlName="contactPerson" placeholder="e.g. Tariq Mansoor" />
+        </div>
+
+        <div class="form-group">
+          <label>Official Phone *</label>
+          <input type="text" formControlName="phone" placeholder="+971 4 000 0000" />
+        </div>
+
+        <div class="form-group">
+          <label>Accounts Email *</label>
+          <input type="email" formControlName="email" placeholder="billing@vendor.ae" />
+        </div>
+
+        <div class="form-group">
+          <label>Supplier Tax TRN *</label>
+          <input type="text" formControlName="taxNumber" placeholder="100XXXXXXXXXXXX" />
+        </div>
+
+        <div class="modal-foot">
+          <button type="button" class="btn-cancel" (click)="closeAddModal()">Cancel</button>
+          <button type="submit" class="btn-save" [disabled]="supplierForm.invalid">
+            <i class="pi pi-check"></i>
+            <span>Register Vendor</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}

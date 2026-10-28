@@ -1,0 +1,6 @@
+<div [class.spinner-overlay]="isOverlay()" [class.spinner-inline]="!isOverlay()">
+  <div class="spinner-core">
+    <div class="spinner-ring"></div>
+    <span class="spinner-text">{{ message() }}</span>
+  </div>
+</div>

@@ -1,0 +1,87 @@
+<header class="topbar">
+  <div class="topbar-left">
+    <!-- Hamburger button for mobile/tablet drawer -->
+    <button
+      type="button"
+      class="mobile-menu-btn"
+      (click)="layout.toggleSidebar()"
+      title="Toggle Navigation Menu"
+      aria-label="Toggle navigation"
+    >
+      <i class="pi pi-bars"></i>
+    </button>
+
+    <!-- Quick Search / Barcode Listener Bar -->
+    <div class="search-box">
+      <i class="pi pi-search search-icon"></i>
+      <input
+        type="text"
+        placeholder="Scan [F2] / search..."
+        class="search-input"
+        appAutoFocus
+        appBarcodeInput
+        [autoClear]="true"
+        (barcodeScanned)="onBarcodeScanned($event)"
+      />
+      <span class="hotkey-badge">Ctrl+K</span>
+    </div>
+  </div>
+
+  <!-- Center: Store & TRN Badge -->
+  <div class="trn-indicator">
+    <i class="pi pi-shield"></i>
+    <span class="trn-full">TRN: 100234892300003 • UAE VAT 5% ACTIVE</span>
+    <span class="trn-compact">VAT 5%</span>
+  </div>
+
+  <!-- Right: System Status, Live Clock & Actions -->
+  <div class="topbar-right">
+    <div class="status-chip" title="Supabase Realtime Sync Active">
+      <span class="pulse-indicator"></span>
+      <span class="status-label">Realtime</span>
+    </div>
+
+    <div class="live-clock">
+      <i class="pi pi-clock"></i>
+      <span>{{ currentTime() }}</span>
+    </div>
+
+    <!-- Theme Switcher: Light, Dark, System Auto -->
+    <div class="theme-switcher">
+      <button
+        type="button"
+        class="theme-btn"
+        [class.active]="themeService.themePreference() === 'light'"
+        (click)="themeService.setTheme('light')"
+        title="Light Mode"
+      >
+        <i class="pi pi-sun"></i>
+      </button>
+      <button
+        type="button"
+        class="theme-btn"
+        [class.active]="themeService.themePreference() === 'dark'"
+        (click)="themeService.setTheme('dark')"
+        title="Dark Mode"
+      >
+        <i class="pi pi-moon"></i>
+      </button>
+      <button
+        type="button"
+        class="theme-btn"
+        [class.active]="themeService.themePreference() === 'system'"
+        (click)="themeService.setTheme('system')"
+        title="System Auto Mode (Follows OS Scheme)"
+      >
+        <i class="pi pi-desktop"></i>
+      </button>
+    </div>
+
+    <button class="topbar-action-btn hide-mobile" title="Fullscreen [F11]">
+      <i class="pi pi-window-maximize"></i>
+    </button>
+    <button class="topbar-action-btn hide-mobile" title="Printer Status: Connected">
+      <i class="pi pi-print"></i>
+    </button>
+  </div>
+</header>

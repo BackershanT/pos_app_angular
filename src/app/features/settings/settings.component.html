@@ -1,0 +1,190 @@
+<div class="feature-page">
+  <!-- Header Bar -->
+  <div class="page-header">
+    <div>
+      <h2>Store Configuration & Tax Settings</h2>
+      <p class="page-subtitle">Configure business identity, UAE VAT parameters, and POS operational policies</p>
+    </div>
+    <button class="btn-primary" (click)="saveSettings()">
+      <i class="pi pi-save"></i>
+      <span>Save Changes</span>
+    </button>
+  </div>
+
+  @if (isSavedToastVisible()) {
+    <div class="toast-alert">
+      <i class="pi pi-check-circle"></i>
+      <span>Configuration updated successfully! New policies will apply to all terminal transactions.</span>
+    </div>
+  }
+
+  <form [formGroup]="settingsForm" class="settings-grid">
+    <!-- Panel 1: Legal & Business Entity -->
+    <div class="settings-card glass-panel">
+      <div class="card-head">
+        <i class="pi pi-building"></i>
+        <h3>Enterprise & VAT Entity</h3>
+      </div>
+
+      <div class="form-fields">
+        <div class="form-group">
+          <label>Registered Business Name</label>
+          <input type="text" formControlName="businessName" />
+        </div>
+
+        <div class="form-group">
+          <label>UAE Tax Registration Number (TRN)</label>
+          <input type="text" formControlName="taxNumber" [class.input-error]="settingsForm.get('taxNumber')?.invalid && settingsForm.get('taxNumber')?.touched" />
+          @if (settingsForm.get('taxNumber')?.hasError('invalidTrn') && settingsForm.get('taxNumber')?.touched) {
+            <small class="error-hint">{{ settingsForm.get('taxNumber')?.errors?.['invalidTrn']?.reason }}</small>
+          } @else {
+            <small class="field-hint">15-digit FTA compliant number printed on Tax Invoices</small>
+          }
+        </div>
+
+        <div class="form-group">
+          <label>Base Accounting Currency</label>
+          <select formControlName="currency">
+            <option value="AED">AED - United Arab Emirates Dirham</option>
+            <option value="SAR">SAR - Saudi Riyal</option>
+            <option value="USD">USD - US Dollar</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel 2: Store Branch Context -->
+    <div class="settings-card glass-panel">
+      <div class="card-head">
+        <i class="pi pi-shop"></i>
+        <h3>Branch & Terminal Parameters</h3>
+      </div>
+
+      <div class="form-fields">
+        <div class="form-group">
+          <label>Branch Outlet Name</label>
+          <input type="text" formControlName="storeName" />
+        </div>
+
+        <div class="form-group">
+          <label>Physical Address / Location</label>
+          <input type="text" formControlName="storeAddress" />
+        </div>
+
+        <div class="form-group">
+          <label>Invoice Number Prefix</label>
+          <input type="text" formControlName="invoicePrefix" />
+          <small class="field-hint">e.g. "INV" yields sequential invoices like INV-20261028-0001</small>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel 3: POS Operational Policies -->
+    <div class="settings-card glass-panel span-2">
+      <div class="card-head">
+        <i class="pi pi-sliders-h"></i>
+        <h3>Checkout & Inventory Governance Rules</h3>
+      </div>
+
+      <div class="toggles-grid">
+        <label class="toggle-card">
+          <input type="checkbox" formControlName="allowNegativeStock" />
+          <div class="toggle-info">
+            <strong>Allow Negative Inventory</strong>
+            <p>If disabled, transactions are blocked when current stock is zero.</p>
+          </div>
+        </label>
+
+        <label class="toggle-card">
+          <input type="checkbox" formControlName="taxInclusivePricing" />
+          <div class="toggle-info">
+            <strong>Tax-Inclusive Shelf Prices</strong>
+            <p>Product catalog prices include 5% UAE VAT by default.</p>
+          </div>
+        </label>
+
+        <label class="toggle-card">
+          <input type="checkbox" formControlName="autoPrintReceipt" />
+          <div class="toggle-info">
+            <strong>Auto-Print Thermal Receipt</strong>
+            <p>Send print command immediately upon payment authorization.</p>
+          </div>
+        </label>
+
+        <label class="toggle-card">
+          <input type="checkbox" formControlName="offlineSalesCache" />
+          <div class="toggle-info">
+            <strong>Offline Resilience Cache</strong>
+            <p>Buffer tickets locally in indexedDB when network is unavailable.</p>
+          </div>
+        </label>
+      </div>
+    </div>
+
+    <!-- Panel 4: UI Appearance & Color Scheme -->
+    <div class="settings-card glass-panel span-2">
+      <div class="card-head">
+        <i class="pi pi-palette"></i>
+        <h3>Interface Appearance & Color Scheme</h3>
+      </div>
+
+      <div class="theme-options-grid">
+        <div
+          class="theme-option-card"
+          [class.selected]="themeService.themePreference() === 'light'"
+          (click)="setTheme('light')"
+        >
+          <div class="theme-preview light-preview">
+            <div class="preview-header"></div>
+            <div class="preview-sidebar"></div>
+            <div class="preview-body"></div>
+          </div>
+          <div class="theme-option-info">
+            <div class="theme-title-row">
+              <i class="pi pi-sun"></i>
+              <strong>Light Theme</strong>
+            </div>
+            <p>High-contrast bright daylight theme for high ambient glare store counters.</p>
+          </div>
+        </div>
+
+        <div
+          class="theme-option-card"
+          [class.selected]="themeService.themePreference() === 'dark'"
+          (click)="setTheme('dark')"
+        >
+          <div class="theme-preview dark-preview">
+            <div class="preview-header"></div>
+            <div class="preview-sidebar"></div>
+            <div class="preview-body"></div>
+          </div>
+          <div class="theme-option-info">
+            <div class="theme-title-row">
+              <i class="pi pi-moon"></i>
+              <strong>Dark Theme</strong>
+            </div>
+            <p>Sleek, low-glare deep obsidian theme reducing cashier eye strain during long shifts.</p>
+          </div>
+        </div>
+
+        <div
+          class="theme-option-card"
+          [class.selected]="themeService.themePreference() === 'system'"
+          (click)="setTheme('system')"
+        >
+          <div class="theme-preview system-preview">
+            <div class="preview-half light"></div>
+            <div class="preview-half dark"></div>
+          </div>
+          <div class="theme-option-info">
+            <div class="theme-title-row">
+              <i class="pi pi-desktop"></i>
+              <strong>System Automatic</strong>
+            </div>
+            <p>Automatically switches between Light and Dark based on your operating system schedule.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

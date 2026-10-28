@@ -1,0 +1,213 @@
+<div class="feature-page">
+  <!-- Header Bar -->
+  <div class="page-header">
+    <div>
+      <h2>Sales Invoices & Transactions</h2>
+      <p class="page-subtitle">Dubai Mall Branch • Immutable historical records with VAT breakdown</p>
+    </div>
+  </div>
+
+  <!-- Filters Toolbar -->
+  <div class="toolbar-card glass-panel">
+    <div class="search-input-wrap">
+      <i class="pi pi-search"></i>
+      <input
+        type="text"
+        placeholder="Search Invoice #, Customer, or Cashier..."
+        [value]="searchQuery()"
+        (input)="searchQuery.set($any($event.target).value); currentPage.set(1)"
+      />
+    </div>
+
+    <div class="status-filters">
+      <button
+        class="filter-chip"
+        [class.active]="selectedStatus() === 'all'"
+        (click)="selectedStatus.set('all'); currentPage.set(1)"
+      >
+        All Invoices
+      </button>
+      <button
+        class="filter-chip"
+        [class.active]="selectedStatus() === 'completed'"
+        (click)="selectedStatus.set('completed'); currentPage.set(1)"
+      >
+        Completed
+      </button>
+      <button
+        class="filter-chip"
+        [class.active]="selectedStatus() === 'partially_refunded'"
+        (click)="selectedStatus.set('partially_refunded'); currentPage.set(1)"
+      >
+        Partially Refunded
+      </button>
+      <button
+        class="filter-chip"
+        [class.active]="selectedStatus() === 'refunded'"
+        (click)="selectedStatus.set('refunded'); currentPage.set(1)"
+      >
+        Refunded
+      </button>
+    </div>
+  </div>
+
+  <!-- Sales Data Table -->
+  <div class="table-container glass-panel">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Invoice #</th>
+          <th>Date & Time</th>
+          <th>Customer</th>
+          <th>Cashier</th>
+          <th>Lines</th>
+          <th>Subtotal</th>
+          <th>VAT (5%)</th>
+          <th>Grand Total</th>
+          <th>Payment</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (sale of paginatedSales(); track sale.id) {
+          <tr>
+            <td class="inv-code">{{ sale.invoiceNumber }}</td>
+            <td class="time-cell">{{ sale.date | dateFormat:'medium' }}</td>
+            <td>{{ sale.customerName | truncate:20:true }}</td>
+            <td>{{ sale.cashierName }}</td>
+            <td>{{ sale.itemsCount }} items</td>
+            <td>{{ sale.subtotal | currencyFormat }}</td>
+            <td class="vat-cell">{{ sale.taxTotal | currencyFormat }}</td>
+            <td class="total-cell">{{ sale.grandTotal | currencyFormat }}</td>
+            <td><span class="pay-method-badge">{{ sale.paymentMethod }}</span></td>
+            <td>
+              <span class="status-pill" [class.completed]="sale.status === 'completed'" [class.refunded]="sale.status === 'refunded'" [class.partial]="sale.status === 'partially_refunded'">
+                {{ sale.status | uppercase }}
+              </span>
+            </td>
+            <td>
+              <button class="btn-sm-view" (click)="openDetails(sale)">
+                <i class="pi pi-receipt"></i>
+                <span>View</span>
+              </button>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+
+    <app-pagination
+      [totalRecords]="totalRecords()"
+      [pageSize]="pageSize()"
+      [currentPage]="currentPage()"
+      (pageChange)="currentPage.set($event)"
+      (pageSizeChange)="pageSize.set($event)"
+    />
+  </div>
+</div>
+
+<!-- Invoice Details & Thermal View Modal -->
+@if (isDetailModalOpen()) {
+  <div class="modal-backdrop" (click)="closeDetails()">
+    <div class="invoice-modal glass-panel" (click)="$event.stopPropagation()">
+      <div class="modal-head">
+        <h3>Invoice Details: {{ selectedSale()?.invoiceNumber }}</h3>
+        <button class="close-x" (click)="closeDetails()">&times;</button>
+      </div>
+
+      <div class="modal-body-thermal">
+        <!-- Thermal Receipt Preview -->
+        <div class="thermal-receipt">
+          <div class="receipt-header">
+            <h4>AEROPOS CAFE LLC</h4>
+            <p>Dubai Mall, Ground Floor, Dubai, UAE</p>
+            <p>TRN: 100234892300003</p>
+            <h5>TAX INVOICE</h5>
+            <small>{{ selectedSale()?.date | dateFormat:'receipt' }}</small>
+          </div>
+          <hr class="receipt-divider" />
+          <div class="receipt-meta">
+            <div><span>Cashier:</span> <strong>{{ selectedSale()?.cashierName }}</strong></div>
+            <div><span>Customer:</span> <strong>{{ selectedSale()?.customerName }}</strong></div>
+            <div><span>Method:</span> <strong>{{ selectedSale()?.paymentMethod }}</strong></div>
+            <div><span>Status:</span> <strong class="uppercase">{{ selectedSale()?.status }}</strong></div>
+          </div>
+          <hr class="receipt-divider" />
+          <div class="receipt-totals">
+            <div class="receipt-row"><span>Subtotal:</span><span>{{ selectedSale()?.subtotal | currencyFormat }}</span></div>
+            <div class="receipt-row"><span>UAE VAT (5%):</span><span>{{ selectedSale()?.taxTotal | currencyFormat }}</span></div>
+            <div class="receipt-row total-bold"><span>TOTAL:</span><span>{{ selectedSale()?.grandTotal | currencyFormat }}</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-foot-actions">
+        <button class="btn-reprint" (click)="reprintReceipt()">
+          <i class="pi pi-print"></i>
+          <span>Reprint Receipt</span>
+        </button>
+
+        @if (selectedSale()?.status === 'completed') {
+          <button
+            *appHasPermission="'pos:refund'"
+            class="btn-refund"
+            (click)="openRefundModal()"
+          >
+            <i class="pi pi-replay"></i>
+            <span>Process Refund</span>
+          </button>
+        }
+
+        <button class="btn-close" (click)="closeDetails()">Close</button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Refund Confirmation Modal -->
+@if (isRefundModalOpen()) {
+  <div class="modal-backdrop" (click)="closeRefundModal()">
+    <div class="modal-card glass-panel" (click)="$event.stopPropagation()">
+      <div class="modal-head">
+        <h3>Refund Invoice: {{ selectedSale()?.invoiceNumber }}</h3>
+        <button class="close-x" (click)="closeRefundModal()">&times;</button>
+      </div>
+
+      <div class="refund-body">
+        <div class="warning-alert">
+          <i class="pi pi-exclamation-triangle"></i>
+          <span>This operation cannot be undone. Completed sales are never deleted; a refund record and corresponding stock movements will be created.</span>
+        </div>
+
+        <div class="form-group">
+          <label>Refund Amount (AED):</label>
+          <input type="text" [value]="selectedSale()?.grandTotal + ' AED'" disabled class="disabled-input" />
+        </div>
+
+        <div class="form-group">
+          <label>Refund Reason *</label>
+          <select [ngModel]="refundReason()" (ngModelChange)="refundReason.set($event)">
+            <option value="Customer Dissatisfaction">Customer Dissatisfaction</option>
+            <option value="Item Damaged / Expired">Item Damaged / Expired</option>
+            <option value="Incorrect Item Charged">Incorrect Item Charged</option>
+            <option value="Order Cancelled">Order Cancelled</option>
+          </select>
+        </div>
+
+        <label class="checkbox-label">
+          <input type="checkbox" [checked]="returnToStock()" (change)="returnToStock.set($any($event.target).checked)" />
+          <span>Restock returned items back to Store Inventory</span>
+        </label>
+      </div>
+
+      <div class="modal-foot">
+        <button class="btn-cancel" (click)="closeRefundModal()">Cancel</button>
+        <button class="btn-confirm-refund" (click)="processRefund()">
+          <i class="pi pi-check"></i>
+          <span>Authorize Refund</span>
+        </button>
+      </div>
+    </div>
+  </div>
+}

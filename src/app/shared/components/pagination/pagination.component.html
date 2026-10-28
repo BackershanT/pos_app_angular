@@ -1,0 +1,49 @@
+<div class="pagination-bar">
+  <div class="records-info">
+    <span>Showing <strong>{{ startIndex() }}</strong>–<strong>{{ endIndex() }}</strong> of <strong>{{ totalRecords() }}</strong> items</span>
+    <div class="page-size-selector">
+      <label>Rows per page:</label>
+      <select [value]="pageSize()" (change)="onPageSizeSelect($event)">
+        @for (opt of pageSizeOptions(); track opt) {
+          <option [value]="opt">{{ opt }}</option>
+        }
+      </select>
+    </div>
+  </div>
+
+  <div class="pagination-controls">
+    <button
+      class="nav-page-btn"
+      [disabled]="currentPage() === 1"
+      (click)="previousPage()"
+      title="Previous Page"
+    >
+      <i class="pi pi-chevron-left"></i>
+    </button>
+
+    <div class="pages-list">
+      @for (p of pageNumbers(); track $index) {
+        @if (p === '...') {
+          <span class="ellipsis-btn">…</span>
+        } @else {
+          <button
+            class="page-num-btn"
+            [class.active]="currentPage() === p"
+            (click)="goToPage(p)"
+          >
+            {{ p }}
+          </button>
+        }
+      }
+    </div>
+
+    <button
+      class="nav-page-btn"
+      [disabled]="currentPage() >= totalPages()"
+      (click)="nextPage()"
+      title="Next Page"
+    >
+      <i class="pi pi-chevron-right"></i>
+    </button>
+  </div>
+</div>
