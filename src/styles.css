@@ -227,3 +227,18 @@ h1, h2, h3, h4, h5, h6 {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--scrollbar-thumb-hover);
 }
+
+/* ==========================================================================
+   NETLIFY BADGE & COLLABORATION DRAWER SUPPRESSION
+   ========================================================================== */
+iframe[src*="netlify"],
+iframe[id*="netlify"],
+div[id*="netlify"],
+[data-netlify-deploy-preview],
+.netlify-badge,
+#netlify-badge {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
