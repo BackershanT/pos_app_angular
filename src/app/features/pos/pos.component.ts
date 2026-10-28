@@ -239,7 +239,7 @@ export class PosComponent implements OnInit {
       async () => {
         const storeId = this.context.storeId();
         const [catalog, categoriesData] = await Promise.all([
-          this.productRepo.getProductsWithInventory(storeId, {
+          this.productRepo.getBranchCatalog(storeId, {
             limit: environment.pos.catalogPageSize,
           }),
           this.categoryRepo.getCategories(),

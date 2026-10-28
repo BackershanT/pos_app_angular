@@ -103,7 +103,7 @@ export class InventoryListComponent implements OnInit {
     }
 
     await this.stockState.run(async () => {
-      const catalog = await this.productRepo.getProductsWithInventory(this.context.storeId(), {
+      const catalog = await this.productRepo.getBranchCatalog(this.context.storeId(), {
         includeInactive: false,
       });
 

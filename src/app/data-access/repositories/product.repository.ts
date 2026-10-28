@@ -41,10 +41,15 @@ export class ProductRepository extends BaseRepository {
   }
 
   /**
-   * Fetches the branch catalog with pagination and truncation metadata.
+   * Branch catalog: master data merged with this branch's on-hand balance,
+   * reorder threshold and truncation metadata.
+   *
+   * `storeId` is mandatory - a catalog can never be resolved from an implicit
+   * branch, and the store identifier must be a UUID or the query silently
+   * returns zero rows.
    */
   async getBranchCatalog(
-    storeId: string = 'a0000000-0000-0000-0000-000000000001',
+    storeId: string,
     options: { limit?: number; includeInactive?: boolean } = {},
   ): Promise<ProductCatalogResult> {
     assertUuid(storeId, 'Store id');
@@ -101,18 +106,6 @@ export class ProductRepository extends BaseRepository {
     });
 
     return { products, truncated };
-  }
-
-  /**
-   * Fetches products with inventory quantities.
-   * Backward-compatible helper returning an array of ProductWithInventory.
-   */
-  async getProductsWithInventory(
-    storeId: string = 'a0000000-0000-0000-0000-000000000001',
-    options: { limit?: number; includeInactive?: boolean } = {},
-  ): Promise<ProductWithInventory[]> {
-    const catalog = await this.getBranchCatalog(storeId, options);
-    return catalog.products;
   }
 
   /**

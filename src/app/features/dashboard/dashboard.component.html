@@ -2,36 +2,70 @@
   <div class="dash-header">
     <div>
       <h2>Operational Intelligence</h2>
-      <p class="dash-subtitle">Dubai Mall Branch • Real-time terminal overview</p>
+      <p class="dash-subtitle">
+        {{ storeName() }} • Trading day figures for the active branch
+      </p>
     </div>
-    <div class="dash-badge">
-      <i class="pi pi-check-circle"></i>
-      <span>Tax Period: Q4 2026 Active</span>
+    <div class="dash-header-actions">
+      <button type="button" class="dash-link-btn secondary" (click)="retryAll()">
+        <i class="pi pi-refresh"></i>
+        <span>Refresh</span>
+      </button>
+      <div class="dash-badge" [class.badge-muted]="!realtime.isConnected()">
+        <i [class]="realtime.isConnected() ? 'pi pi-check-circle' : 'pi pi-exclamation-triangle'"></i>
+        <span>{{ realtime.isConnected() ? 'Realtime feed live' : 'Realtime offline' }}</span>
+      </div>
     </div>
   </div>
 
-  <!-- KPI Cards -->
+  @if (overviewState.hasFailed()) {
+    <div class="dash-alert dash-alert-danger" role="alert">
+      <i class="pi pi-exclamation-triangle"></i>
+      <div>
+        <strong>Branch figures unavailable</strong>
+        <p>{{ overviewState.error() }}</p>
+      </div>
+      <button type="button" class="dash-link-btn" (click)="retryAll()">
+        <i class="pi pi-refresh"></i>
+        <span>Retry</span>
+      </button>
+    </div>
+  }
+
+  <!-- KPI Cards: every figure derived from this branch's own rows -->
   <div class="kpi-grid">
-    @for (stat of stats; track stat.title) {
+    @for (stat of stats(); track stat.title) {
       <div class="kpi-card glass-panel">
         <div class="kpi-icon" [style.background]="stat.color + '22'" [style.color]="stat.color">
           <i [class]="stat.icon"></i>
         </div>
         <div class="kpi-content">
           <span class="kpi-title">{{ stat.title }}</span>
-          <h3 class="kpi-val">{{ stat.value }}</h3>
-          <span class="kpi-sub">{{ stat.sub }}</span>
+          @if (overviewState.isLoading()) {
+            <h3 class="kpi-val"><i class="pi pi-spin pi-spinner"></i></h3>
+            <span class="kpi-sub">Calculating from branch tickets...</span>
+          } @else {
+            <h3 class="kpi-val">{{ stat.value }}</h3>
+            <span class="kpi-sub" [class]="stat.trend">
+              @if (stat.trend === 'up') {
+                <i class="pi pi-arrow-top-right"></i>
+              } @else if (stat.trend === 'down') {
+                <i class="pi pi-arrow-bottom-right"></i>
+              }
+              {{ stat.sub }}
+            </span>
+          }
         </div>
       </div>
     }
   </div>
 
-  <!-- Top Fast-Moving Products Grid -->
+  <!-- Sell-through ranking (real sale_items aggregation) -->
   <div class="dash-section">
     <div class="dash-section-head">
       <div>
         <h3 class="dash-section-title">Fast-Moving Register Products</h3>
-        <p class="dash-section-sub">Real-time stock velocity & quick terminal dispatch</p>
+        <p class="dash-section-sub">Aggregated from recorded sale lines, not a static list</p>
       </div>
       <button type="button" class="dash-link-btn" (click)="goToPos()">
         <span>Open POS Terminal</span>
@@ -39,49 +73,117 @@
       </button>
     </div>
 
-    <div class="dash-products-grid">
-      @for (prod of fastMovingProducts(); track prod.id) {
-        <app-product-card
-          [product]="prod"
-          mode="compact"
-          [showCategory]="true"
-          (selected)="goToPos()"
-          (actionClick)="goToPos()"
-        />
-      }
-    </div>
+    <app-data-state
+      [state]="velocityState"
+      loadingMessage="Aggregating sell-through..."
+      errorTitle="Sell-through unavailable"
+      emptyTitle="No sales history yet"
+      emptyMessage="Nothing has been sold on this business yet. Complete a ticket on the register and this ranking will build itself."
+      emptyIcon="pi-chart-bar"
+      (retry)="loadVelocity()"
+    >
+      <div class="velocity-card glass-panel">
+        @for (row of velocity(); track row.productName; let i = $index) {
+          <div class="velocity-row">
+            <span class="velocity-rank">{{ i + 1 }}</span>
+            <div class="velocity-main">
+              <div class="velocity-title">
+                <strong>{{ row.productName }}</strong>
+                @if (row.sku) {
+                  <span class="velocity-sku">{{ row.sku }}</span>
+                }
+              </div>
+              <div class="velocity-bar" [attr.aria-label]="row.unitsSold + ' units sold'">
+                <span
+                  class="velocity-fill"
+                  [style.width.%]="maxUnitsSold() ? (row.unitsSold / maxUnitsSold()) * 100 : 0"
+                ></span>
+              </div>
+            </div>
+            <div class="velocity-figures">
+              <strong>{{ row.unitsSold }}</strong> units
+              <span>{{ row.revenue | number: '1.2-2' }} {{ currency() }}</span>
+            </div>
+          </div>
+        }
+        @if (velocityClipped()) {
+          <p class="velocity-note">
+            <i class="pi pi-info-circle"></i>
+            Ranking covers the most recent ticket lines only; open Reports for the full period.
+          </p>
+        }
+      </div>
+    </app-data-state>
   </div>
 
-  <!-- Recent Transactions Table -->
+  <!-- Recent tickets feed -->
   <div class="recent-sales-card glass-panel">
     <div class="card-head">
       <h3>Recent Terminal Transactions</h3>
-      <span class="auto-refresh-tag"><span class="pulse-dot"></span> Live Stream</span>
+      <span class="auto-refresh-tag" [class.tag-offline]="!realtime.isConnected()">
+        <span class="pulse-dot"></span>
+        {{ realtime.isConnected() ? 'Live stream' : 'Manual refresh' }}
+      </span>
     </div>
 
-    <table class="sales-table">
-      <thead>
-        <tr>
-          <th>Invoice #</th>
-          <th>Cashier</th>
-          <th>Items</th>
-          <th>Total (AED)</th>
-          <th>Status</th>
-          <th>Time</th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (sale of recentSales(); track sale.invoice) {
+    <app-data-state
+      [state]="feedState"
+      loadingMessage="Loading branch tickets..."
+      errorTitle="Transaction feed unavailable"
+      emptyTitle="No tickets on record"
+      emptyMessage="This branch has not closed any tickets yet, so there is nothing to stream."
+      emptyIcon="pi-receipt"
+      (retry)="loadFeed()"
+    >
+      <table class="sales-table">
+        <thead>
           <tr>
-            <td class="inv-cell">{{ sale.invoice }}</td>
-            <td>{{ sale.cashier }}</td>
-            <td>{{ sale.items }} items</td>
-            <td class="total-cell">{{ sale.total | number:'1.2-2' }} AED</td>
-            <td><span class="status-pill">{{ sale.status }}</span></td>
-            <td class="time-cell">{{ sale.time }}</td>
+            <th>Invoice #</th>
+            <th>Terminal</th>
+            <th>Lines</th>
+            <th>Total ({{ currency() }})</th>
+            <th>Status</th>
+            <th>Time</th>
           </tr>
-        }
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          @for (sale of recentTickets(); track sale.id) {
+            <tr>
+              <td class="inv-cell">{{ sale.invoice }}</td>
+              <td>{{ sale.terminal }}</td>
+              <td>
+                {{ sale.lines }} line{{ sale.lines === 1 ? '' : 's' }}
+                <small class="dim">({{ sale.units }} units)</small>
+              </td>
+              <td class="total-cell">{{ sale.total | number: '1.2-2' }}</td>
+              <td>
+                <span
+                  class="status-pill"
+                  [class.pill-refunded]="sale.status === 'Refunded'"
+                  [class.pill-open]="sale.status === 'Open' || sale.status === 'Part paid'"
+                >
+                  {{ sale.status }}
+                </span>
+              </td>
+              <td class="time-cell">{{ sale.time }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </app-data-state>
   </div>
+
+  @if (lowStock().count > 0) {
+    <div class="dash-alert dash-alert-warning">
+      <i class="pi pi-exclamation-triangle"></i>
+      <div>
+        <strong>{{ lowStock().count }} SKUs at or below their reorder level</strong>
+        <p>Replenish them before the next shift so the register keeps selling.</p>
+      </div>
+      <button type="button" class="dash-link-btn" (click)="goToInventory()">
+        <i class="pi pi-warehouse"></i>
+        <span>Open Inventory</span>
+      </button>
+    </div>
+  }
 </div>

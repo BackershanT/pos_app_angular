@@ -137,6 +137,7 @@ describe('PosComponent (UAE POS Register & Terminal Checkout)', () => {
     component.addToCart(item);
 
     component.openPaymentModal();
+    component.paymentMethod.set('cash');
     expect(component.isPaymentModalOpen()).toBe(true);
     expect(component.amountTendered()).toBe(25.2);
 
@@ -144,11 +145,11 @@ describe('PosComponent (UAE POS Register & Terminal Checkout)', () => {
     expect(component.changeDue()).toBe(24.8);
   });
 
-  it('should authorize sale, clear cart, and generate simplified tax invoice', () => {
+  it('should authorize sale, clear cart, and generate simplified tax invoice', async () => {
     const item = component.products[0];
     component.addToCart(item);
     component.openPaymentModal();
-    component.confirmSale();
+    await component.confirmSale();
 
     expect(component.cart().length).toBe(0);
     expect(component.isSuccessModalOpen()).toBe(true);

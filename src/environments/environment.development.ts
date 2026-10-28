@@ -45,6 +45,8 @@ export const environment = {
     defaultCurrency: 'AED',
     defaultTaxRate: 0.05, // 5% UAE standard VAT
     locale: 'en-AE',
+    // Trading-day boundary for KPIs/reports (UAE operating day is Gulf time).
+    timezone: 'Asia/Dubai',
     allowNegativeStockDefault: false,
     invoicePrefixDefault: 'INV-DEV',
     // Active tenant context. These must be UUIDs matching the seeded/production
