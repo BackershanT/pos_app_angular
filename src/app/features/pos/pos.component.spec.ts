@@ -24,6 +24,21 @@ describe('PosComponent (UAE POS Register & Terminal Checkout)', () => {
         quantity_on_hand: 45,
       },
     ]),
+    getBranchCatalog: vi.fn().mockResolvedValue({
+      products: [
+        {
+          id: '1',
+          name: 'Spanish Latte (Iced)',
+          sku: 'CF-001',
+          barcode: '6291041001',
+          selling_price: 24.0,
+          tax_rate: 0.05,
+          category_code: 'coffee',
+          quantity_on_hand: 45,
+        },
+      ],
+      truncated: false,
+    }),
   };
 
   const mockCategoryRepo = {

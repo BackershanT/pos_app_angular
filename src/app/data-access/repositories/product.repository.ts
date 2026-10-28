@@ -41,22 +41,10 @@ export class ProductRepository extends BaseRepository {
   }
 
   /**
-   * Fetches the branch catalog with on-hand stock resolved for ONE store.
-   * Returns ProductWithInventory[] array.
-   */
-  async getProductsWithInventory(
-    storeId: string = 'a0000000-0000-0000-0000-000000000001',
-    options: { limit?: number; includeInactive?: boolean } = {},
-  ): Promise<ProductWithInventory[]> {
-    const res = await this.getBranchCatalog(storeId, options);
-    return res.products;
-  }
-
-  /**
    * Fetches the branch catalog with pagination and truncation metadata.
    */
-  async getBranchCatalog(
-    storeId: string = 'a0000000-0000-0000-0000-000000000001',
+  async getProductsWithInventory(
+    storeId: string,
     options: { limit?: number; includeInactive?: boolean } = {},
   ): Promise<ProductCatalogResult> {
     assertUuid(storeId, 'Store id');

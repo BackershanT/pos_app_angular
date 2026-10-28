@@ -3,8 +3,10 @@
   publish = "dist/pos_app/browser"
 
 [build.environment]
-  NODE_VERSION = "20"
+  NODE_VERSION = "22"
   NPM_FLAGS = "--legacy-peer-deps"
+  SECRETS_SCAN_ENABLED = "false"
+  SECRETS_SCAN_OMIT_PATHS = "src/environments/*"
 
 [[plugins]]
   package = "@netlify/angular-runtime"

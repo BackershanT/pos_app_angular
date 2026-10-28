@@ -14,8 +14,11 @@ export interface BaseProductCardInput {
   sellingPrice?: number;
   costPrice?: number;
   category?: string;
-  stock?: number;
-  quantity_on_hand?: number;
+  /** null = this branch does not track the item; undefined = unknown. Never fake 0. */
+  stock?: number | null;
+  quantity_on_hand?: number | null;
+  /** Branch replenishment threshold; drives the low-stock warning. */
+  reorderLevel?: number | null;
   icon?: string;
   color?: string;
   imageUrl?: string;
@@ -77,13 +80,28 @@ export class ProductCardComponent {
     return p.price ?? p.sellingPrice ?? 0;
   });
 
-  readonly stock = computed(() => {
+  readonly stock = computed<number | null>(() => {
     const p = this.product();
-    return p.stock ?? p.quantity_on_hand ?? 0;
+    const raw = p.stock ?? p.quantity_on_hand;
+    return raw == null ? null : Number(raw);
   });
 
-  readonly isOutOfStock = computed(() => this.stock() <= 0);
-  readonly isLowStock = computed(() => this.stock() > 0 && this.stock() < 15);
+  /** Untracked goods are sellable - a missing stock row is not "sold out". */
+  readonly isStockTracked = computed(() => this.stock() !== null);
+
+  readonly isOutOfStock = computed(() => this.isStockTracked() && (this.stock() as number) <= 0);
+
+  readonly isLowStock = computed(() => {
+    if (!this.isStockTracked() || this.isOutOfStock()) return false;
+    const qty = this.stock() as number;
+    const threshold = this.product().reorderLevel;
+    return qty > 0 && qty < (threshold != null ? Number(threshold) : 15);
+  });
+
+  /** Screen-reader copy: untracked items must not announce "Stock: null". */
+  readonly stockLabel = computed(() =>
+    this.isStockTracked() ? `${this.stock()} in stock` : 'Stock not tracked',
+  );
 
   readonly color = computed(() => {
     const p = this.product();

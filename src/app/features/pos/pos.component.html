@@ -33,7 +33,7 @@
           <i class="pi pi-search"></i>
           <input
             type="text"
-            placeholder="Filter catalog or search by SKU..."
+            placeholder="Filter catalog or search by SKU / barcode..."
             [value]="searchQuery()"
             (input)="searchQuery.set($any($event.target).value)"
           />
@@ -43,6 +43,17 @@
             </button>
           }
         </div>
+
+        <button
+          type="button"
+          class="catalog-refresh-btn"
+          (click)="loadCatalog()"
+          [disabled]="catalogState.isLoading()"
+          title="Reload this branch catalog and stock levels"
+        >
+          <i class="pi pi-refresh" [class.fa-spin]="catalogState.isLoading()"></i>
+          <span>Refresh</span>
+        </button>
 
         <div
           class="cloud-status-badge"
@@ -69,24 +80,45 @@
       </div>
     </div>
 
-    <!-- Products Grid -->
-    <div class="products-grid">
-      @for (product of filteredProducts(); track product.id) {
-        <app-product-card
-          [product]="product"
-          mode="pos"
-          [showCategory]="true"
-          [cartQuantity]="getCartQuantity(product.id)"
-          (selected)="addToCart($event)"
-          (actionClick)="addToCart($event)"
-        />
-      } @empty {
-        <div class="empty-state">
-          <i class="pi pi-search"></i>
-          <p>No products found matching your search</p>
-        </div>
-      }
-    </div>
+    <!-- Products Grid: loading / error / empty / ready are explicit states -->
+    <app-data-state
+      [state]="catalogState"
+      (retry)="loadCatalog()"
+      [isFiltered]="searchQuery().length > 0 || selectedCategory() !== 'all'"
+      loadingMessage="Loading branch catalog..."
+      emptyTitle="No products on this branch"
+      emptyMessage="The database is reachable but this branch has no active products yet. Add products from the Catalog screen."
+      emptyIcon="pi pi-box"
+      errorTitle="Catalog unavailable"
+    >
+      <div class="products-grid">
+        @for (product of filteredProducts(); track product.id) {
+          <app-product-card
+            [product]="product"
+            mode="pos"
+            [showCategory]="true"
+            [cartQuantity]="getCartQuantity(product.id)"
+            (selected)="addToCart($event)"
+            (actionClick)="addToCart($event)"
+          />
+        } @empty {
+          <div class="empty-state">
+            <i class="pi pi-search"></i>
+            <p>No catalog item matches this filter</p>
+            @if (searchQuery() || selectedCategory() !== 'all') {
+              <button
+                type="button"
+                class="clear-search-btn"
+                (click)="searchQuery.set(''); selectedCategory.set('all')"
+              >
+                <i class="pi pi-times"></i>
+                <span>Clear filters</span>
+              </button>
+            }
+          </div>
+        }
+      </div>
+    </app-data-state>
   </section>
 
   <!-- Right Side: Active Cart & Calculation Drawer -->
@@ -122,7 +154,7 @@
         <div class="cart-item-row">
           <div class="cart-item-info">
             <span class="item-name">{{ item.product.name }}</span>
-            <span class="item-unit-price">{{ item.product.price | number:'1.2-2' }} AED each</span>
+            <span class="item-unit-price">{{ item.product.price | number:'1.2-2' }} {{ context.currency() }} each</span>
           </div>
 
           <div class="cart-stepper">
@@ -130,13 +162,18 @@
               <i class="pi pi-minus"></i>
             </button>
             <span class="step-val">{{ item.quantity }}</span>
-            <button class="step-btn" (click)="incrementQuantity(item)">
+            <button
+              class="step-btn"
+              (click)="incrementQuantity(item)"
+              [disabled]="item.product.stock !== null && item.quantity >= item.product.stock"
+              [title]="item.product.stock !== null ? 'On hand: ' + item.product.stock : 'Stock not tracked'"
+            >
               <i class="pi pi-plus"></i>
             </button>
           </div>
 
           <div class="cart-item-total">
-            <span>{{ (item.product.price * item.quantity) | currencyFormat }}</span>
+            <span>{{ lineSubtotal(item) | currencyFormat }}</span>
             <button class="remove-btn" (click)="removeFromCart(item)" title="Remove item">
               <i class="pi pi-trash"></i>
             </button>
@@ -158,7 +195,7 @@
         <span>{{ cartCalculations().subtotal | currencyFormat }}</span>
       </div>
       <div class="summary-line vat-line">
-        <span>UAE VAT (5%) <small class="vat-tag">Included</small></span>
+        <span>UAE VAT ({{ vatLabel() }}) <small class="vat-tag">Calculated per item</small></span>
         <span>{{ cartCalculations().taxTotal | currencyFormat }}</span>
       </div>
       @if (cartCalculations().discountTotal > 0) {
@@ -175,11 +212,11 @@
 
     <!-- Cart Actions -->
     <div class="cart-actions">
-      <button class="cart-btn secondary-btn" (click)="clearCart()" [disabled]="cart().length === 0">
+      <button class="cart-btn secondary-btn" (click)="clearCart()" [disabled]="cart().length === 0 || isSubmitting()">
         <i class="pi pi-trash"></i>
         <span>Clear</span>
       </button>
-      <button class="cart-btn charge-btn" (click)="openPaymentModal()" [disabled]="cart().length === 0">
+      <button class="cart-btn charge-btn" (click)="openPaymentModal()" [disabled]="cart().length === 0 || isSubmitting()">
         <i class="pi pi-credit-card"></i>
         <span>Pay {{ cartCalculations().grandTotal | currencyFormat }}</span>
       </button>
@@ -210,13 +247,13 @@
     <div class="payment-modal glass-panel" (click)="$event.stopPropagation()">
       <div class="modal-header">
         <h3>Process Payment</h3>
-        <button class="close-btn" (click)="closePaymentModal()">&times;</button>
+        <button class="close-btn" (click)="closePaymentModal()" [disabled]="isSubmitting()">&times;</button>
       </div>
 
       <div class="modal-body">
         <div class="pay-total-card">
-          <span class="pay-label">Total Due (with 5% VAT)</span>
-          <h2 class="pay-amount">{{ cartCalculations().grandTotal | number:'1.2-2' }} AED</h2>
+          <span class="pay-label">Total Due (VAT {{ vatLabel() }})</span>
+          <h2 class="pay-amount">{{ cartCalculations().grandTotal | number:'1.2-2' }} {{ context.currency() }}</h2>
         </div>
 
         <div class="payment-methods-grid">
@@ -224,6 +261,7 @@
             class="method-btn"
             [class.active]="paymentMethod() === 'card'"
             (click)="paymentMethod.set('card')"
+            [disabled]="isSubmitting()"
           >
             <i class="pi pi-credit-card"></i>
             <span>Card / Apple Pay</span>
@@ -232,6 +270,7 @@
             class="method-btn"
             [class.active]="paymentMethod() === 'cash'"
             (click)="paymentMethod.set('cash')"
+            [disabled]="isSubmitting()"
           >
             <i class="pi pi-money-bill"></i>
             <span>Cash</span>
@@ -240,6 +279,7 @@
             class="method-btn"
             [class.active]="paymentMethod() === 'split'"
             (click)="paymentMethod.set('split')"
+            [disabled]="isSubmitting()"
           >
             <i class="pi pi-wallet"></i>
             <span>Split Tender</span>
@@ -248,28 +288,93 @@
 
         @if (paymentMethod() === 'cash') {
           <div class="cash-input-group">
-            <label>Amount Tendered (AED):</label>
+            <label>Amount Tendered ({{ context.currency() }}):</label>
             <input
               type="number"
               class="tender-input"
               appAutoFocus
               [selectText]="true"
+              [min]="cartCalculations().grandTotal"
+              step="0.01"
               [ngModel]="amountTendered()"
               (ngModelChange)="amountTendered.set($event)"
             />
-            <div class="change-display">
-              <span>Change Due:</span>
-              <strong [class.has-change]="changeDue() > 0">{{ changeDue() | number:'1.2-2' }} AED</strong>
+            <div class="quick-denoms">
+              @for (denom of [20, 50, 100, 200]; track denom) {
+                <button type="button" class="denom-btn" (click)="amountTendered.set(denom)">
+                  {{ denom }}
+                </button>
+              }
+              <button type="button" class="denom-btn exact" (click)="amountTendered.set(cartCalculations().grandTotal)">
+                Exact
+              </button>
             </div>
           </div>
+        }
+
+        @if (paymentMethod() === 'split') {
+          <div class="split-tender-grid">
+            <div class="cash-input-group">
+              <label>Cash Portion ({{ context.currency() }}):</label>
+              <input
+                type="number"
+                class="tender-input"
+                appAutoFocus
+                min="0"
+                step="0.01"
+                [ngModel]="splitCash()"
+                (ngModelChange)="splitCash.set($event)"
+              />
+            </div>
+            <div class="cash-input-group">
+              <label>Card Portion ({{ context.currency() }}):</label>
+              <input
+                class="tender-input"
+                type="number"
+                [value]="paymentValidation().grandTotal - splitCash()"
+                readonly
+              />
+            </div>
+          </div>
+        }
+
+        <div class="change-display" [class.has-change]="changeDue() > 0">
+          <span>Change Due:</span>
+          <strong>{{ changeDue() | number:'1.2-2' }} {{ context.currency() }}</strong>
+        </div>
+        @if (outstandingBalance() > 0) {
+          <div class="tender-feedback tender-shortfall">
+            <i class="pi pi-exclamation-circle"></i>
+            <span>Short by {{ outstandingBalance() | number:'1.2-2' }} {{ context.currency() }} - tender cannot be lower than the total.</span>
+          </div>
+        }
+
+        @if (checkoutError()) {
+          <div class="tender-feedback tender-error" role="alert">
+            <i class="pi pi-times-circle"></i>
+            <span>{{ checkoutError() }}</span>
+          </div>
+          <p class="tender-hint">
+            Nothing was charged. Correct the tender or retry - the same request key is reused, so a
+            timed-out submission cannot create a duplicate invoice.
+          </p>
         }
       </div>
 
       <div class="modal-footer">
-        <button class="btn-cancel" (click)="closePaymentModal()">Cancel</button>
-        <button class="btn-confirm-pay" (click)="confirmSale()">
-          <i class="pi pi-check"></i>
-          <span>Authorize & Print Invoice</span>
+        <button class="btn-cancel" (click)="closePaymentModal()" [disabled]="isSubmitting()">Cancel</button>
+        <button
+          class="btn-confirm-pay"
+          (click)="confirmSale()"
+          [disabled]="isSubmitting() || !paymentValidation().isFullyPaid"
+        >
+          @if (isSubmitting()) {
+            <i class="pi pi-spinner pi-spin"></i>
+            <span>Recording Sale...</span>
+          } @else {
+            <i class="pi pi-check"></i>
+            <span>Authorize & Print Invoice</span>
+          }
         </button>
       </div>
     </div>
@@ -277,41 +382,53 @@
 }
 
 <!-- Receipt / Invoice Confirmation Modal -->
-@if (isSuccessModalOpen()) {
+@if (isSuccessModalOpen() && receipt(); as invoice) {
   <div class="modal-backdrop">
     <div class="receipt-modal glass-panel">
       <div class="success-icon-banner">
         <i class="pi pi-check-circle"></i>
         <h3>Sale Completed Successfully!</h3>
-        <p>Invoice #{{ lastInvoice()?.invoiceNumber }}</p>
+        <p>Invoice #{{ invoice.invoiceNumber }}</p>
+        @if (invoice.replayed) {
+          <small class="replay-note">Replayed from a previous submission with the same request key.</small>
+        }
       </div>
 
       <!-- Thermal Receipt Preview -->
       <div class="thermal-receipt">
         <div class="receipt-header">
-          <h4>AEROPOS CAFE LLC</h4>
-          <p>Dubai Mall, Ground Floor, Dubai, UAE</p>
-          <p>TRN: {{ lastInvoice()?.trn }}</p>
+          <h4>{{ invoice.businessName | uppercase }}</h4>
+          <p>{{ invoice.storeName }} - {{ invoice.storeAddress }}</p>
+          <p>TRN: {{ invoice.trn }}</p>
           <h5>SIMPLIFIED TAX INVOICE</h5>
-          <small>{{ lastInvoice()?.date | dateFormat:'receipt' }}</small>
+          <small>{{ invoice.issuedAt | dateFormat:'receipt' }}</small>
+          <small class="receipt-meta">Terminal {{ invoice.terminalId }} · Cashier {{ invoice.cashierName }}</small>
         </div>
         <hr class="receipt-divider" />
         <div class="receipt-items">
-          @for (item of lastInvoice()?.items; track item.product.id) {
+          @for (line of invoice.lines; track line.name) {
             <div class="receipt-item-row">
-              <span>{{ item.quantity }}x {{ item.product.name | truncate:24:true }}</span>
-              <span>{{ (item.product.price * item.quantity) | currencyFormat }}</span>
+              <span>{{ line.quantity }}x {{ line.name | truncate:24:true }}</span>
+              <span>{{ line.lineTotal | currencyFormat }}</span>
             </div>
           }
         </div>
         <hr class="receipt-divider" />
         <div class="receipt-totals">
-          <div class="receipt-row"><span>Subtotal:</span><span>{{ lastInvoice()?.subtotal | currencyFormat }}</span></div>
-          <div class="receipt-row"><span>VAT (5%):</span><span>{{ lastInvoice()?.vat | currencyFormat }}</span></div>
-          <div class="receipt-row total-bold"><span>TOTAL:</span><span>{{ lastInvoice()?.grandTotal | currencyFormat }}</span></div>
-          <div class="receipt-row"><span>Paid via {{ lastInvoice()?.method }}:</span><span>{{ lastInvoice()?.tendered | currencyFormat }}</span></div>
-          @if (lastInvoice()?.change > 0) {
-            <div class="receipt-row"><span>Change Given:</span><span>{{ lastInvoice()?.change | currencyFormat }}</span></div>
+          <div class="receipt-row"><span>Subtotal:</span><span>{{ invoice.subtotal | currencyFormat }}</span></div>
+          @if (invoice.discountTotal > 0) {
+            <div class="receipt-row"><span>Discount:</span><span>-{{ invoice.discountTotal | currencyFormat }}</span></div>
+          }
+          <div class="receipt-row"><span>VAT ({{ vatLabel() }}):</span><span>{{ invoice.vatTotal | currencyFormat }}</span></div>
+          <div class="receipt-row total-bold"><span>TOTAL:</span><span>{{ invoice.grandTotal | currencyFormat }}</span></div>
+          @for (tender of invoice.tenders; track tender.method) {
+            <div class="receipt-row">
+              <span>Paid via {{ tender.method }}:</span>
+              <span>{{ tender.amount | currencyFormat }}</span>
+            </div>
+          }
+          @if (invoice.changeDue > 0) {
+            <div class="receipt-row"><span>Change Given:</span><span>{{ invoice.changeDue | currencyFormat }}</span></div>
           }
         </div>
         <div class="receipt-footer">
