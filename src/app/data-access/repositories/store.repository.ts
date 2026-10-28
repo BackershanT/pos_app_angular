@@ -23,6 +23,25 @@ export class StoreRepository extends BaseRepository {
   }
 
   /**
+   * Fetches active branches for a specific business.
+   * Used at login to resolve the cashier's terminal context.
+   */
+  async getStoresByBusiness(businessId: string): Promise<Store[]> {
+    const { data, error } = await this.supabase
+      .from('stores')
+      .select('*')
+      .eq('business_id', businessId)
+      .eq('is_active', true)
+      .order('name', { ascending: true });
+
+    if (error) {
+      throw new Error(`Failed to fetch stores for business: ${error.message}`);
+    }
+
+    return (data as Store[]) ?? [];
+  }
+
+  /**
    * Gets store by ID.
    */
   async getStoreById(storeId: string): Promise<Store | null> {
