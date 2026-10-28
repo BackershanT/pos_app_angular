@@ -41,36 +41,19 @@ export class ProductRepository extends BaseRepository {
   }
 
   /**
-   * Fetches products with joined category and store inventory for POS registers.
+   * Fetches the branch catalog with on-hand stock resolved for ONE store.
+   * Returns ProductWithInventory[] array.
    */
-  async getProductsWithInventory(limit = 100): Promise<ProductWithInventory[]> {
-    const { data, error } = await this.supabase
-      .from('products')
-      .select('*, categories(id, name, description), store_inventory(quantity_on_hand, reorder_level)')
-      .eq('is_active', true)
-      .order('name', { ascending: true })
-      .limit(limit);
-
-    if (error) {
-      throw new Error(`Failed to fetch products with inventory: ${error.message}`);
-    }
-
-    return ((data as any[]) ?? []).map((p: any) => {
-      const inv = Array.isArray(p.store_inventory) ? p.store_inventory[0] : p.store_inventory;
-      const cat = p.categories;
-      return {
-        ...p,
-        category_name: cat?.name || 'General',
-        category_code: slugifyCategory(cat?.description, cat?.name),
-        quantity_on_hand: inv?.quantity_on_hand != null ? Number(inv.quantity_on_hand) : 25,
-        reorder_level: inv?.reorder_level != null ? Number(inv.reorder_level) : 10,
-        inventory_tracked: Boolean(inv),
-      };
-    });
+  async getProductsWithInventory(
+    storeId: string = 'a0000000-0000-0000-0000-000000000001',
+    options: { limit?: number; includeInactive?: boolean } = {},
+  ): Promise<ProductWithInventory[]> {
+    const res = await this.getBranchCatalog(storeId, options);
+    return res.products;
   }
 
   /**
-   * Fetches the branch catalog with on-hand stock resolved for ONE store.
+   * Fetches the branch catalog with pagination and truncation metadata.
    */
   async getBranchCatalog(
     storeId: string = 'a0000000-0000-0000-0000-000000000001',
