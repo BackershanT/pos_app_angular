@@ -1,0 +1,98 @@
+<div
+  class="product-card"
+  [class.mode-pos]="mode() === 'pos'"
+  [class.mode-catalog]="mode() === 'catalog'"
+  [class.mode-compact]="mode() === 'compact'"
+  [class.out-of-stock]="isOutOfStock()"
+  [class.disabled]="disabled()"
+  (click)="onCardClick()"
+  (keydown)="onKeyDown($event)"
+  tabindex="0"
+  role="button"
+  [attr.aria-label]="name() + ', Price: ' + (price() | currencyFormat) + ', Stock: ' + stock()"
+>
+  <!-- Card Visual Header -->
+  <div class="card-icon-wrapper" [style.background]="color() + '22'">
+    <span class="product-emoji">{{ icon() }}</span>
+
+    <!-- Stock Badge Indicator -->
+    @if (showStock()) {
+      <div
+        class="stock-badge"
+        [class.out-of-stock-badge]="isOutOfStock()"
+        [class.low-stock]="isLowStock()"
+      >
+        @if (isOutOfStock()) {
+          <span>Sold Out</span>
+        } @else if (isLowStock()) {
+          <span class="pulse-warning"></span>
+          <span>{{ stock() }} left</span>
+        } @else {
+          <span>{{ stock() }} left</span>
+        }
+      </div>
+    }
+
+    <!-- Optional Out-Of-Stock Overlay -->
+    @if (isOutOfStock()) {
+      <div class="out-of-stock-overlay">
+        <i class="pi pi-ban"></i>
+        <span>Out of Stock</span>
+      </div>
+    }
+  </div>
+
+  <!-- Card Details -->
+  <div class="card-details">
+    <div class="card-meta-row">
+      @if (sku()) {
+        <span class="product-sku">{{ sku() }}</span>
+      }
+      @if (showCategory() && category()) {
+        <span class="product-category-chip" [style.border-color]="color() + '55'" [style.color]="color()">
+          {{ category() }}
+        </span>
+      }
+    </div>
+
+    <h4 class="product-title" [title]="name()">
+      {{ name() | truncate:26:true }}
+    </h4>
+
+    @if (showBarcode() && barcode()) {
+      <div class="product-barcode">
+        <i class="pi pi-barcode"></i>
+        <span>{{ barcode() }}</span>
+      </div>
+    }
+
+    <!-- Price and Action Row -->
+    <div class="card-price-row">
+      <div class="price-stack">
+        <span class="product-price">{{ price() | currencyFormat }}</span>
+      </div>
+
+      <!-- Action Button based on mode -->
+      @if (mode() === 'pos') {
+        <button
+          type="button"
+          class="card-action-btn add-btn"
+          [disabled]="isOutOfStock() || disabled()"
+          (click)="onActionButtonClick($event)"
+          title="Add to cart ticket"
+        >
+          <i class="pi pi-plus"></i>
+        </button>
+      } @else if (mode() === 'catalog') {
+        <button
+          type="button"
+          class="card-action-btn edit-btn"
+          (click)="onActionButtonClick($event)"
+          title="Edit product parameters"
+        >
+          <i class="pi pi-pencil"></i>
+        </button>
+      }
+    </div>
+  </div>
+</div>
