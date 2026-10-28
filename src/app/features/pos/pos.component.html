@@ -43,24 +43,12 @@
     <!-- Products Grid -->
     <div class="products-grid">
       @for (product of filteredProducts(); track product.id) {
-        <div class="product-card" (click)="addToCart(product)">
-          <div class="card-icon-wrapper" [style.background]="product.color + '22'">
-            <span class="product-emoji">{{ product.icon }}</span>
-            <span class="stock-badge" [class.low-stock]="product.stock < 15">
-              {{ product.stock }} left
-            </span>
-          </div>
-          <div class="card-details">
-            <span class="product-sku">{{ product.sku }}</span>
-            <h4 class="product-title">{{ product.name | truncate:24:true }}</h4>
-            <div class="card-price-row">
-              <span class="product-price">{{ product.price | currencyFormat }}</span>
-              <button class="add-circle-btn" title="Add to cart">
-                <i class="pi pi-plus"></i>
-              </button>
-            </div>
-          </div>
-        </div>
+        <app-product-card
+          [product]="product"
+          mode="pos"
+          (selected)="addToCart($event)"
+          (actionClick)="addToCart($event)"
+        />
       } @empty {
         <div class="empty-state">
           <i class="pi pi-search"></i>

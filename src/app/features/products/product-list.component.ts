@@ -2,6 +2,7 @@ import { Component, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { PaginationComponent } from '../../shared/components/pagination/pagination.component';
+import { ProductCardComponent } from '../../shared/components/product-card/product-card.component';
 
 export interface ProductItem {
   id: string;
@@ -14,12 +15,14 @@ export interface ProductItem {
   taxRate: number;
   stock: number;
   isActive: boolean;
+  icon?: string;
+  color?: string;
 }
 
 @Component({
   selector: 'app-product-list',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, PaginationComponent],
+  imports: [CommonModule, ReactiveFormsModule, PaginationComponent, ProductCardComponent],
   templateUrl: './product-list.component.html',
   styleUrl: './product-list.component.css',
 })
@@ -29,6 +32,8 @@ export class ProductListComponent {
   currentPage = signal<number>(1);
   pageSize = signal<number>(10);
   isAddModalOpen = signal<boolean>(false);
+  editingProduct = signal<ProductItem | null>(null);
+  viewMode = signal<'grid' | 'table'>('grid');
 
   categories = ['all', 'Beverages', 'Bakery', 'Main Meals', 'Desserts'];
 
@@ -91,7 +96,12 @@ export class ProductListComponent {
     this.currentPage.set(1);
   }
 
+  setViewMode(mode: 'grid' | 'table') {
+    this.viewMode.set(mode);
+  }
+
   openAddModal() {
+    this.editingProduct.set(null);
     this.productForm.reset({
       category: 'Beverages',
       costPrice: 10,
@@ -101,28 +111,65 @@ export class ProductListComponent {
     this.isAddModalOpen.set(true);
   }
 
+  openEditModal(item: any) {
+    const product = this.products().find((p) => String(p.id) === String(item.id)) || (item as ProductItem);
+    this.editingProduct.set(product);
+    this.productForm.setValue({
+      name: product.name,
+      sku: product.sku,
+      barcode: product.barcode,
+      category: product.category,
+      costPrice: product.costPrice,
+      sellingPrice: product.sellingPrice,
+      stock: product.stock,
+    });
+    this.isAddModalOpen.set(true);
+  }
+
   closeAddModal() {
     this.isAddModalOpen.set(false);
+    this.editingProduct.set(null);
   }
 
   saveProduct() {
     if (this.productForm.invalid) return;
 
     const val = this.productForm.value;
-    const newProduct: ProductItem = {
-      id: String(Date.now()),
-      name: val.name!,
-      sku: val.sku!,
-      barcode: val.barcode!,
-      category: val.category!,
-      costPrice: Number(val.costPrice),
-      sellingPrice: Number(val.sellingPrice),
-      taxRate: 0.05,
-      stock: Number(val.stock),
-      isActive: true,
-    };
+    const editing = this.editingProduct();
 
-    this.products.update((current) => [newProduct, ...current]);
+    if (editing) {
+      this.products.update((current) =>
+        current.map((p) =>
+          p.id === editing.id
+            ? {
+                ...p,
+                name: val.name!,
+                sku: val.sku!,
+                barcode: val.barcode!,
+                category: val.category!,
+                costPrice: Number(val.costPrice),
+                sellingPrice: Number(val.sellingPrice),
+                stock: Number(val.stock),
+              }
+            : p
+        )
+      );
+    } else {
+      const newProduct: ProductItem = {
+        id: String(Date.now()),
+        name: val.name!,
+        sku: val.sku!,
+        barcode: val.barcode!,
+        category: val.category!,
+        costPrice: Number(val.costPrice),
+        sellingPrice: Number(val.sellingPrice),
+        taxRate: 0.05,
+        stock: Number(val.stock),
+        isActive: true,
+      };
+      this.products.update((current) => [newProduct, ...current]);
+    }
+
     this.closeAddModal();
   }
 }

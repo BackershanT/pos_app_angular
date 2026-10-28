@@ -9,6 +9,8 @@ import { DateFormatPipe } from '../../shared/pipes/date-format.pipe';
 import { LayoutService } from '../../core/services/layout.service';
 import { inject } from '@angular/core';
 
+import { ProductCardComponent, BaseProductCardInput } from '../../shared/components/product-card/product-card.component';
+
 interface CatalogProduct {
   id: string;
   name: string;
@@ -37,6 +39,7 @@ interface CartItem {
     CurrencyFormatPipe,
     TruncatePipe,
     DateFormatPipe,
+    ProductCardComponent,
   ],
   templateUrl: './pos.component.html',
   styleUrl: './pos.component.css',
@@ -106,16 +109,17 @@ export class PosComponent {
     return tendered > total ? Math.round((tendered - total) * 100) / 100 : 0;
   });
 
-  addToCart(product: CatalogProduct) {
+  addToCart(product: BaseProductCardInput | CatalogProduct) {
+    const fullProduct = this.products.find(p => String(p.id) === String(product.id)) || (product as CatalogProduct);
     const current = this.cart();
-    const existingIndex = current.findIndex(item => item.product.id === product.id);
+    const existingIndex = current.findIndex(item => String(item.product.id) === String(fullProduct.id));
 
     if (existingIndex > -1) {
       const updated = [...current];
       updated[existingIndex].quantity += 1;
       this.cart.set(updated);
     } else {
-      this.cart.set([...current, { product, quantity: 1, discount: 0 }]);
+      this.cart.set([...current, { product: fullProduct, quantity: 1, discount: 0 }]);
     }
   }
 
