@@ -105,3 +105,96 @@ $$;
 
 REVOKE ALL ON FUNCTION public.record_stock_adjustment(UUID, UUID, NUMERIC, TEXT, TEXT) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.record_stock_adjustment(UUID, UUID, NUMERIC, TEXT, TEXT) TO authenticated;
+
+-- ----------------------------------------------------------------------------
+-- apply_stock_delta: relative stock movement (goods receipt, transfers, restock)
+-- The browser sends an intention (+/-), never a resulting balance, and the row is
+-- locked while the delta is applied so concurrent receipts cannot be lost.
+-- ----------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.apply_stock_delta(
+    p_store_id UUID,
+    p_product_id UUID,
+    p_delta NUMERIC(12, 3),
+    p_reason TEXT,
+    p_reference_id UUID DEFAULT NULL,
+    p_notes TEXT DEFAULT NULL,
+    p_allow_negative BOOLEAN DEFAULT FALSE
+)
+RETURNS NUMERIC(12, 3)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+    v_business_id UUID;
+    v_existing public.store_inventory%ROWTYPE;
+    v_new_balance NUMERIC(12, 3);
+BEGIN
+    IF auth.uid() IS NULL THEN
+        RAISE EXCEPTION 'Unauthenticated stock request';
+    END IF;
+
+    IF p_delta IS NULL OR p_delta = 0 THEN
+        RAISE EXCEPTION 'Stock delta must be a non-zero number';
+    END IF;
+
+    IF p_reason NOT IN (
+        'sale', 'refund', 'purchase', 'adjustment',
+        'transfer_in', 'transfer_out', 'damage', 'loss', 'initial_count'
+    ) THEN
+        RAISE EXCEPTION 'Invalid stock movement reason: %', p_reason;
+    END IF;
+
+    SELECT business_id INTO v_business_id
+    FROM public.stores
+    WHERE id = p_store_id;
+
+    IF v_business_id IS NULL THEN
+        RAISE EXCEPTION 'Store % does not exist', p_store_id;
+    END IF;
+
+    IF NOT public.user_has_store_access(p_store_id) THEN
+        RAISE EXCEPTION 'User % is not assigned to store %', auth.uid(), p_store_id;
+    END IF;
+
+    SELECT * INTO v_existing
+    FROM public.store_inventory
+    WHERE store_id = p_store_id AND product_id = p_product_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        IF p_delta < 0 AND NOT p_allow_negative THEN
+            RAISE EXCEPTION 'No inventory record exists for product % in this store', p_product_id;
+        END IF;
+
+        v_new_balance := p_delta;
+
+        INSERT INTO public.store_inventory (business_id, store_id, product_id, quantity_on_hand, reorder_level)
+        VALUES (v_business_id, p_store_id, p_product_id, v_new_balance, 10.000);
+    ELSE
+        v_new_balance := v_existing.quantity_on_hand + p_delta;
+
+        IF v_new_balance < 0 AND NOT p_allow_negative THEN
+            RAISE EXCEPTION 'Insufficient stock: available %, requested %', v_existing.quantity_on_hand, ABS(p_delta);
+        END IF;
+
+        UPDATE public.store_inventory
+        SET quantity_on_hand = v_new_balance
+        WHERE id = v_existing.id;
+    END IF;
+
+    INSERT INTO public.stock_movements (
+        business_id, store_id, product_id,
+        quantity_delta, balance_after, reason, reference_id, performed_by, notes
+    )
+    VALUES (
+        v_business_id, p_store_id, p_product_id,
+        p_delta, v_new_balance, p_reason, p_reference_id, auth.uid(), p_notes
+    );
+
+    RETURN v_new_balance;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.apply_stock_delta(UUID, UUID, NUMERIC, TEXT, UUID, TEXT, BOOLEAN) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.apply_stock_delta(UUID, UUID, NUMERIC, TEXT, UUID, TEXT, BOOLEAN) TO authenticated;

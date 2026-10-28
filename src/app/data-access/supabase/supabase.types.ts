@@ -988,6 +988,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      apply_stock_delta: {
+        Args: {
+          p_store_id: string
+          p_product_id: string
+          p_delta: number
+          p_reason: string
+          p_reference_id?: string | null
+          p_notes?: string | null
+          p_allow_negative?: boolean
+        }
+        Returns: number
+      }
       complete_sale: {
         Args: {
           p_store_id: string

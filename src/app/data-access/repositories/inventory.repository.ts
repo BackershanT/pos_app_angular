@@ -113,4 +113,40 @@ export class InventoryRepository extends BaseRepository {
 
     return data as unknown as StoreInventory;
   }
+
+  /**
+   * Applies a relative stock movement (goods receipt, transfer, return to stock).
+   * The server computes the resulting balance under a row lock, so concurrent
+   * receipts cannot overwrite each other the way a read-modify-write would.
+   */
+  async applyStockDelta(
+    storeId: string,
+    productId: string,
+    delta: number,
+    reason: StockMovementReason,
+    options: { referenceId?: string | null; notes?: string | null; allowNegative?: boolean } = {},
+  ): Promise<number> {
+    assertUuid(storeId, 'Store id');
+    assertUuid(productId, 'Product id');
+
+    if (!Number.isFinite(delta) || delta === 0) {
+      throw new Error('Stock delta must be a non-zero number.');
+    }
+
+    const { data, error } = await this.supabase.rpc('apply_stock_delta', {
+      p_store_id: storeId,
+      p_product_id: productId,
+      p_delta: delta,
+      p_reason: reason,
+      p_reference_id: options.referenceId ?? null,
+      p_notes: options.notes ?? null,
+      p_allow_negative: options.allowNegative === true,
+    });
+
+    if (error) {
+      throw new Error(`Stock update failed: ${error.message}`);
+    }
+
+    return Number(data);
+  }
 }

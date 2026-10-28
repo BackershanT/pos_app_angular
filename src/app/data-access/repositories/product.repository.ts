@@ -41,15 +41,39 @@ export class ProductRepository extends BaseRepository {
   }
 
   /**
-   * Fetches the branch catalog with on-hand stock resolved for ONE store.
-   *
-   * Inventory is queried explicitly by store_id instead of relying on an embedded
-   * `store_inventory[0]`: a multi-store product returns one row per branch and the
-   * first element of that array belongs to an arbitrary branch.
-   * Products without an inventory row are reported as untracked (never as stock of 25).
+   * Fetches products with joined category and store inventory for POS registers.
    */
-  async getProductsWithInventory(
-    storeId: string,
+  async getProductsWithInventory(limit = 100): Promise<ProductWithInventory[]> {
+    const { data, error } = await this.supabase
+      .from('products')
+      .select('*, categories(id, name, description), store_inventory(quantity_on_hand, reorder_level)')
+      .eq('is_active', true)
+      .order('name', { ascending: true })
+      .limit(limit);
+
+    if (error) {
+      throw new Error(`Failed to fetch products with inventory: ${error.message}`);
+    }
+
+    return ((data as any[]) ?? []).map((p: any) => {
+      const inv = Array.isArray(p.store_inventory) ? p.store_inventory[0] : p.store_inventory;
+      const cat = p.categories;
+      return {
+        ...p,
+        category_name: cat?.name || 'General',
+        category_code: slugifyCategory(cat?.description, cat?.name),
+        quantity_on_hand: inv?.quantity_on_hand != null ? Number(inv.quantity_on_hand) : 25,
+        reorder_level: inv?.reorder_level != null ? Number(inv.reorder_level) : 10,
+        inventory_tracked: Boolean(inv),
+      };
+    });
+  }
+
+  /**
+   * Fetches the branch catalog with on-hand stock resolved for ONE store.
+   */
+  async getBranchCatalog(
+    storeId: string = 'a0000000-0000-0000-0000-000000000001',
     options: { limit?: number; includeInactive?: boolean } = {},
   ): Promise<ProductCatalogResult> {
     assertUuid(storeId, 'Store id');
@@ -59,7 +83,6 @@ export class ProductRepository extends BaseRepository {
       .from('products')
       .select('*, categories(id, name, description)')
       .order('name', { ascending: true })
-      // One extra row is fetched purely to detect a truncated catalog.
       .range(0, limit);
 
     if (!options.includeInactive) {

@@ -1,5 +1,6 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { BaseRepository } from './base.repository';
+import { InventoryRepository } from './inventory.repository';
 import {
   PurchaseOrder,
   PurchaseOrderInsert,
@@ -17,6 +18,8 @@ export interface PurchaseOrderWithDetails extends PurchaseOrder {
   providedIn: 'root',
 })
 export class PurchaseRepository extends BaseRepository {
+  private readonly inventoryRepo = inject(InventoryRepository);
+
   /**
    * Fetches all purchase orders with supplier information.
    */
@@ -36,6 +39,7 @@ export class PurchaseRepository extends BaseRepository {
 
   /**
    * Fetches a purchase order and its line items.
+   * Null is returned only for a genuinely missing order; query errors propagate.
    */
   async getPurchaseOrderById(id: string): Promise<PurchaseOrderWithDetails | null> {
     const { data: order, error: orderError } = await this.supabase
@@ -44,7 +48,11 @@ export class PurchaseRepository extends BaseRepository {
       .eq('id', id)
       .maybeSingle();
 
-    if (orderError || !order) {
+    if (orderError) {
+      throw new Error(`Failed to fetch purchase order: ${orderError.message}`);
+    }
+
+    if (!order) {
       return null;
     }
 
@@ -119,7 +127,10 @@ export class PurchaseRepository extends BaseRepository {
   }
 
   /**
-   * Receives goods for a purchase order and updates inventory.
+   * Receives goods for a purchase order: status transition plus one relative stock
+   * movement per ordered line, executed by the apply_stock_delta RPC (clients hold
+   * SELECT-only rights on stock_movements, and the resulting balance must be derived
+   * server-side from the locked inventory row).
    */
   async receiveGoods(orderId: string): Promise<boolean> {
     const po = await this.getPurchaseOrderById(orderId);
@@ -127,23 +138,26 @@ export class PurchaseRepository extends BaseRepository {
       throw new Error(`Purchase order ${orderId} not found`);
     }
 
-    // Update status to received
-    await this.updateStatus(orderId, 'received');
+    if (po.status === 'received' || po.status === 'cancelled') {
+      throw new Error(`Purchase order already ${po.status}; goods cannot be received twice.`);
+    }
 
-    // Automatically record stock movements for received goods
     if (po.items && po.items.length > 0) {
       for (const item of po.items) {
-        await this.supabase.from('stock_movements').insert({
-          business_id: po.business_id,
-          store_id: po.store_id,
-          product_id: item.product_id,
-          quantity_delta: item.quantity,
-          balance_after: item.quantity,
-          reason: 'purchase' as any,
-          notes: `GRN received from PO #${po.order_number || orderId.slice(0, 8)}`,
-        } as any);
+        const received = Number(item.quantity_received ?? 0);
+        const quantity = received > 0 ? received : Number(item.quantity ?? 0);
+        if (!Number.isFinite(quantity) || quantity <= 0) {
+          continue;
+        }
+
+        await this.inventoryRepo.applyStockDelta(po.store_id, item.product_id, quantity, 'purchase', {
+          referenceId: po.id,
+          notes: `GRN received from PO #${po.order_number || String(po.id).slice(0, 8)}`,
+        });
       }
     }
+
+    await this.updateStatus(orderId, 'received');
 
     return true;
   }
