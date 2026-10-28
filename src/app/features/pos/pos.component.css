@@ -943,6 +943,85 @@
   }
 }
 
+.catalog-refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  background: transparent;
+  color: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.catalog-refresh-btn:hover:not(:disabled) {
+  background: rgba(148, 163, 184, 0.14);
+}
+
+.catalog-refresh-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Split tender: cash portion + auto-derived card portion */
+.split-tender-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.85rem;
+  margin-top: 0.75rem;
+}
+
+.tender-input {
+  width: 100%;
+}
+
+.tender-feedback {
+  margin-top: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.tender-shortfall {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 10px;
+  font-size: 0.78rem;
+  background: rgba(245, 158, 11, 0.13);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  color: #fcd34d;
+}
+
+.tender-hint {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.72rem;
+  opacity: 0.7;
+}
+
+.receipt-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.7rem;
+  opacity: 0.8;
+  text-align: center;
+}
+
+.replay-note {
+  margin: 0.75rem 0 0;
+  padding: 0.5rem 0.65rem;
+  border-radius: 8px;
+  font-size: 0.7rem;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px dashed rgba(245, 158, 11, 0.4);
+  color: #fcd34d;
+}
+
 @keyframes floatingSlideUp {
   from {
     opacity: 0;

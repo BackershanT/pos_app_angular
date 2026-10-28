@@ -2,8 +2,10 @@
   <!-- Header Bar -->
   <div class="page-header">
     <div>
-      <h2>Store Inventory & Stock Movements</h2>
-      <p class="page-subtitle">Dubai Mall Branch • Auditable movement ledger & stock adjustments</p>
+      <h2>Store Inventory &amp; Stock Movements</h2>
+      <p class="page-subtitle">
+        {{ context.storeName() }} • Auditable movement ledger &amp; stock adjustments
+      </p>
     </div>
 
     <!-- Tab Switcher -->
@@ -70,131 +72,205 @@
           <span>Cards</span>
         </button>
       </div>
+
+      <button
+        type="button"
+        class="btn-ghost"
+        (click)="loadStock()"
+        [disabled]="stockState.isLoading()"
+      >
+        <i class="pi pi-refresh" [class.pi-spin]="stockState.isLoading()"></i>
+        <span>Refresh balances</span>
+      </button>
     </div>
 
-    @if (stockViewMode() === 'grid') {
-      <!-- Visual Stock Cards Grid -->
-      <div class="inventory-cards-wrapper">
-        <div class="catalog-products-grid">
-          @for (item of paginatedInventory(); track item.id) {
-            <app-product-card
-              [product]="toCardProduct(item)"
-              mode="catalog"
-              [showCategory]="true"
-              (selected)="openAdjustModal(item)"
-              (actionClick)="openAdjustModal(item)"
-            />
-          } @empty {
-            <div class="empty-cards-state glass-panel">
-              <i class="pi pi-inbox"></i>
-              <p>No inventory records matching your query</p>
-            </div>
-          }
-        </div>
+    @if (stockState.isReady() && untrackedCount() > 0) {
+      <p class="ledger-note">
+        <i class="pi pi-info-circle"></i>
+        {{ untrackedCount() }} SKU(s) have no stock row at this branch. They stay sellable on the
+        register and are shown as <strong>Untracked</strong> until counted in.
+      </p>
+    }
 
-        <app-pagination
-          [totalRecords]="totalInventoryRecords()"
-          [pageSize]="pageSize()"
-          [currentPage]="currentPage()"
-          (pageChange)="currentPage.set($event)"
-          (pageSizeChange)="pageSize.set($event)"
-        />
-      </div>
-    } @else {
-      <!-- Inventory Table -->
-      <div class="table-container glass-panel">
+    <app-data-state
+      [state]="stockState"
+      [isFiltered]="searchQuery().trim().length > 0 || onlyLowStock()"
+      loadingMessage="Reading on-hand balances for this branch..."
+      errorTitle="Stock levels unavailable"
+      emptyTitle="Nothing to count yet"
+      emptyMessage="This branch has no active SKUs. Add products to the catalog before recording movements."
+      emptyIcon="pi-warehouse"
+      (retry)="loadStock()"
+    >
+      @if (stockViewMode() === 'grid') {
+        <!-- Visual Stock Cards Grid -->
+        <div class="inventory-cards-wrapper">
+          <div class="catalog-products-grid">
+            @for (item of paginatedInventory(); track item.id) {
+              <app-product-card
+                [product]="toCardProduct(item)"
+                mode="catalog"
+                [showCategory]="true"
+                (selected)="openAdjustModal(item)"
+                (actionClick)="openAdjustModal(item)"
+              />
+            } @empty {
+              <div class="empty-cards-state glass-panel">
+                <i class="pi pi-filter-slash"></i>
+                <p>No inventory records match the current filter.</p>
+                <button type="button" class="btn-ghost" (click)="clearStockFilters()">
+                  <i class="pi pi-times"></i>
+                  <span>Clear filters</span>
+                </button>
+              </div>
+            }
+          </div>
+
+          <app-pagination
+            [totalRecords]="totalInventoryRecords()"
+            [pageSize]="pageSize()"
+            [currentPage]="currentPage()"
+            (pageChange)="currentPage.set($event)"
+            (pageSizeChange)="pageSize.set($event)"
+          />
+        </div>
+      } @else {
+        <!-- Inventory Table -->
+        <div class="table-container glass-panel">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>SKU</th>
+                <th>Product Name</th>
+                <th>Category</th>
+                <th>On Hand</th>
+                <th>Reorder Level</th>
+                <th>Unit Cost</th>
+                <th>Total Cost Value</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of paginatedInventory(); track item.id) {
+                <tr>
+                  <td class="sku-cell"><app-badge variant="neutral">{{ item.sku }}</app-badge></td>
+                  <td class="bold-cell">{{ item.productName }}</td>
+                  <td><app-badge variant="info">{{ item.category }}</app-badge></td>
+                  <td class="qty-cell">
+                    @if (item.inventoryTracked) {
+                      <strong>{{ item.quantityOnHand }}</strong> units
+                    } @else {
+                      <span class="sku-dim">Not counted</span>
+                    }
+                  </td>
+                  <td>
+                    {{ item.inventoryTracked ? item.reorderLevel + ' units' : '—' }}
+                  </td>
+                  <td>
+                    {{ item.unitCost | number: '1.2-2' }}
+                    {{ context.currency() }}
+                  </td>
+                  <td class="value-cell">
+                    {{ item.totalCostValuation | number: '1.2-2' }}
+                    {{ context.currency() }}
+                  </td>
+                  <td>
+                    @if (!item.inventoryTracked) {
+                      <app-badge variant="neutral">Untracked</app-badge>
+                    } @else if (item.quantityOnHand <= 0) {
+                      <app-badge variant="danger" [dot]="true">Out of Stock</app-badge>
+                    } @else if (item.quantityOnHand <= item.reorderLevel) {
+                      <app-badge variant="warning" [dot]="true">Low Stock</app-badge>
+                    } @else {
+                      <app-badge variant="success" [dot]="true">In Stock</app-badge>
+                    }
+                  </td>
+                  <td>
+                    <button class="btn-sm-adjust" (click)="openAdjustModal(item)">
+                      <i class="pi pi-sliders-h"></i>
+                      <span>Adjust</span>
+                    </button>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="9" class="empty-table-cell">
+                    <i class="pi pi-filter-slash"></i>
+                    <p>No inventory records match the current filter.</p>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+
+          <app-pagination
+            [totalRecords]="totalInventoryRecords()"
+            [pageSize]="pageSize()"
+            [currentPage]="currentPage()"
+            (pageChange)="currentPage.set($event)"
+            (pageSizeChange)="pageSize.set($event)"
+          />
+        </div>
+      }
+    </app-data-state>
+  } @else {
+    <div class="toolbar-card glass-panel ledger-toolbar">
+      <button type="button" class="btn-ghost" (click)="loadMovements()" [disabled]="movementsState.isLoading()">
+        <i class="pi pi-refresh" [class.pi-spin]="movementsState.isLoading()"></i>
+        <span>Refresh ledger</span>
+      </button>
+      <span class="ledger-note">
+        Every row is written by the database in the same transaction as the movement itself.
+      </span>
+    </div>
+
+    <!-- Movements Ledger Table -->
+    <app-data-state
+      [state]="movementsState"
+      loadingMessage="Loading the movement ledger..."
+      errorTitle="Audit ledger unavailable"
+      emptyTitle="No movements recorded"
+      emptyMessage="Nothing has moved stock at this branch yet. Sales, refunds and manual adjustments all appear here."
+      emptyIcon="pi-history"
+      (retry)="loadMovements()"
+    >
+      <div class="table-container glass-panel ledger-scroll">
         <table class="data-table">
           <thead>
             <tr>
-              <th>SKU</th>
-              <th>Product Name</th>
-              <th>Category</th>
-              <th>On Hand</th>
-              <th>Reorder Level</th>
-              <th>Unit Cost</th>
-              <th>Total Cost Value</th>
-              <th>Status</th>
-              <th>Action</th>
+              <th>Timestamp</th>
+              <th>SKU / Product</th>
+              <th>Delta</th>
+              <th>Balance After</th>
+              <th>Reason</th>
+              <th>Performed By</th>
+              <th>Notes &amp; Reference</th>
             </tr>
           </thead>
           <tbody>
-            @for (item of paginatedInventory(); track item.id) {
+            @for (m of movements(); track m.id) {
               <tr>
-                <td class="sku-cell"><app-badge variant="neutral">{{ item.sku }}</app-badge></td>
-                <td class="bold-cell">{{ item.productName }}</td>
-                <td><app-badge variant="info">{{ item.category }}</app-badge></td>
-                <td class="qty-cell">
-                  <strong>{{ item.quantityOnHand }}</strong> units
-                </td>
-                <td>{{ item.reorderLevel }} units</td>
-                <td>{{ item.unitCost | number:'1.2-2' }} AED</td>
-                <td class="value-cell">{{ item.totalCostValuation | number:'1.2-2' }} AED</td>
+                <td class="time-cell">{{ m.timestamp }}</td>
                 <td>
-                  @if (item.quantityOnHand <= 0) {
-                    <app-badge variant="danger" [dot]="true">Out of Stock</app-badge>
-                  } @else if (item.quantityOnHand <= item.reorderLevel) {
-                    <app-badge variant="warning" [dot]="true">Low Stock</app-badge>
-                  } @else {
-                    <app-badge variant="success" [dot]="true">In Stock</app-badge>
-                  }
+                  <span class="bold-cell">{{ m.productName }}</span>
+                  <small class="sku-dim">{{ m.sku }}</small>
                 </td>
                 <td>
-                  <button class="btn-sm-adjust" (click)="openAdjustModal(item)">
-                    <i class="pi pi-sliders-h"></i>
-                    <span>Adjust</span>
-                  </button>
+                  <app-badge [variant]="m.quantityDelta > 0 ? 'success' : 'danger'">
+                    {{ m.quantityDelta > 0 ? '+' : '' }}{{ m.quantityDelta }}
+                  </app-badge>
                 </td>
+                <td class="qty-cell"><strong>{{ m.balanceAfter }}</strong> units</td>
+                <td><app-badge variant="info">{{ m.reason | uppercase }}</app-badge></td>
+                <td>{{ m.performedBy }}</td>
+                <td class="notes-cell">{{ m.notes }}</td>
               </tr>
             }
           </tbody>
         </table>
-
-        <app-pagination
-          [totalRecords]="totalInventoryRecords()"
-          [pageSize]="pageSize()"
-          [currentPage]="currentPage()"
-          (pageChange)="currentPage.set($event)"
-          (pageSizeChange)="pageSize.set($event)"
-        />
       </div>
-    }
-  } @else {
-    <!-- Movements Ledger Table -->
-    <div class="table-container glass-panel">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Timestamp</th>
-            <th>SKU / Product</th>
-            <th>Delta</th>
-            <th>Balance After</th>
-            <th>Reason</th>
-            <th>Performed By</th>
-            <th>Notes & Reference</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (m of movements(); track m.id) {
-            <tr>
-              <td class="time-cell">{{ m.timestamp }}</td>
-              <td>
-                <span class="bold-cell">{{ m.productName }}</span>
-                <small class="sku-dim">{{ m.sku }}</small>
-              </td>
-              <td>
-                <app-badge [variant]="m.quantityDelta > 0 ? 'success' : 'danger'">
-                  {{ m.quantityDelta > 0 ? '+' : '' }}{{ m.quantityDelta }}
-                </app-badge>
-              </td>
-              <td class="qty-cell"><strong>{{ m.balanceAfter }}</strong> units</td>
-              <td><app-badge variant="info">{{ m.reason | uppercase }}</app-badge></td>
-              <td>{{ m.performedBy }}</td>
-              <td class="notes-cell">{{ m.notes }}</td>
-            </tr>
-          }
-        </tbody>
-      </table>
-    </div>
+    </app-data-state>
   }
 </div>
 
@@ -204,13 +280,17 @@
     <div class="modal-card glass-panel" (click)="$event.stopPropagation()">
       <div class="modal-head">
         <h3>Adjust Stock: {{ selectedItemForAdjustment()?.productName }}</h3>
-        <button class="close-x" (click)="closeAdjustModal()">&times;</button>
+        <button class="close-x" (click)="closeAdjustModal()" [disabled]="isAdjusting()">&times;</button>
       </div>
 
       <div class="adjust-body">
         <div class="current-stock-callout">
           <span>Current On Hand:</span>
-          <strong>{{ selectedItemForAdjustment()?.quantityOnHand }} units</strong>
+          @if (selectedItemForAdjustment()?.inventoryTracked) {
+            <strong>{{ selectedItemForAdjustment()?.quantityOnHand }} units</strong>
+          } @else {
+            <strong>No stock row yet</strong>
+          }
         </div>
 
         <div class="form-group">
@@ -221,17 +301,27 @@
             [ngModel]="adjustmentDelta()"
             (ngModelChange)="adjustmentDelta.set($event)"
             placeholder="+5 or -3"
+            [disabled]="isAdjusting()"
           />
-          <small class="hint">Resulting balance will be: <strong>{{ (selectedItemForAdjustment()?.quantityOnHand || 0) + adjustmentDelta() }}</strong> units</small>
+          <small class="hint">
+            Projected balance: <strong>{{ projectedBalance() }}</strong> units. The server
+            recomputes this from the locked row, not from this preview.
+          </small>
         </div>
 
         <div class="form-group">
           <label>Adjustment Reason *</label>
-          <select [ngModel]="adjustmentReason()" (ngModelChange)="adjustmentReason.set($event)">
+          <select
+            [ngModel]="adjustmentReason()"
+            (ngModelChange)="adjustmentReason.set($event)"
+            [disabled]="isAdjusting()"
+          >
             <option value="adjustment">Stock Count Adjustment (Discrepancy)</option>
             <option value="damage">Damaged / Expired Goods Write-off</option>
             <option value="purchase">Direct Supplier Restock</option>
             <option value="refund">Customer Return Restock</option>
+            <option value="loss">Shrinkage / Loss</option>
+            <option value="initial_count">Opening Stock Count</option>
           </select>
         </div>
 
@@ -242,15 +332,35 @@
             [ngModel]="adjustmentNotes()"
             (ngModelChange)="adjustmentNotes.set($event)"
             placeholder="e.g. End of day shelf audit verified by manager"
+            [disabled]="isAdjusting()"
           />
+          <small class="hint">Required: movements without a note cannot be committed.</small>
         </div>
+
+        @if (adjustmentError()) {
+          <div class="form-error" role="alert">
+            <i class="pi pi-exclamation-triangle"></i>
+            <span>{{ adjustmentError() }}</span>
+          </div>
+        }
       </div>
 
       <div class="modal-foot">
-        <button class="btn-cancel" (click)="closeAdjustModal()">Cancel</button>
-        <button class="btn-save" (click)="submitAdjustment()" [disabled]="adjustmentDelta() === 0">
-          <i class="pi pi-check"></i>
-          <span>Commit Stock Movement</span>
+        <button class="btn-cancel" (click)="closeAdjustModal()" [disabled]="isAdjusting()">
+          Cancel
+        </button>
+        <button
+          class="btn-save"
+          (click)="submitAdjustment()"
+          [disabled]="adjustmentDelta() === 0 || isAdjusting()"
+        >
+          @if (isAdjusting()) {
+            <i class="pi pi-spin pi-spinner"></i>
+            <span>Committing...</span>
+          } @else {
+            <i class="pi pi-check"></i>
+            <span>Commit Stock Movement</span>
+          }
         </button>
       </div>
     </div>

@@ -462,3 +462,47 @@
   }
 }
 
+/* ---------------------------------------------------------------------------
+   Ledger affordances
+--------------------------------------------------------------------------- */
+.ledger-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.ledger-note {
+  margin: 0 0 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.76rem;
+  opacity: 0.8;
+}
+
+.ledger-toolbar .ledger-note {
+  margin: 0;
+  flex: 1 1 240px;
+}
+
+.ledger-scroll {
+  overflow-x: auto;
+}
+
+.empty-table-cell {
+  padding: 2.5rem 1rem;
+  text-align: center;
+}
+
+.empty-table-cell i {
+  font-size: 1.6rem;
+  opacity: 0.5;
+}
+
+.empty-table-cell p {
+  margin: 0.6rem 0 0;
+  font-size: 0.82rem;
+  opacity: 0.8;
+}
+

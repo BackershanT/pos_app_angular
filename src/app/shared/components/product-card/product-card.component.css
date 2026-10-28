@@ -123,6 +123,19 @@
   z-index: 2;
 }
 
+.stock-badge .untracked-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.4rem;
+  border-radius: 6px;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: rgba(148, 163, 184, 0.18);
+  color: inherit;
+}
+
 .stock-badge.low-stock {
   background: rgba(245, 158, 11, 0.2);
   border-color: rgba(245, 158, 11, 0.4);

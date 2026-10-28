@@ -168,6 +168,13 @@ export class InventoryListComponent implements OnInit {
     this.stockViewMode.set(mode);
   }
 
+  /** Resets the stock filters so an operator is never stuck in a "no results" view. */
+  clearStockFilters(): void {
+    this.searchQuery.set('');
+    this.onlyLowStock.set(false);
+    this.currentPage.set(1);
+  }
+
   toCardProduct(item: InventoryItem) {
     return {
       id: item.id,
