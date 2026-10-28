@@ -1,0 +1,34 @@
+<!-- Loading: never leave a data region blank while a request is in flight -->
+@if (state().isLoading()) {
+  <div class="data-state data-state-loading" role="status" aria-live="polite">
+    <app-loading-spinner [message]="loadingMessage()" />
+  </div>
+} @else if (state().hasFailed()) {
+  <!-- Error: explicit failure surface plus a retry affordance -->
+  <div class="data-state data-state-error glass-panel" role="alert">
+    <i class="pi pi-exclamation-triangle state-icon"></i>
+    <div class="state-copy">
+      <h4>{{ errorTitle() }}</h4>
+      <p>{{ errorDetail() }}</p>
+      <p class="state-hint">Check the terminal network or Supabase connection, then retry.</p>
+    </div>
+    @if (showRetry()) {
+      <button type="button" class="state-retry-btn" (click)="onRetry()">
+        <i class="pi pi-refresh"></i>
+        <span>Retry</span>
+      </button>
+    }
+  </div>
+} @else if (state().isEmpty()) {
+  <!-- Empty: honest, non-dummy placeholder -->
+  <div class="data-state data-state-empty glass-panel">
+    <i [class]="emptyIcon()" class="state-icon"></i>
+    <div class="state-copy">
+      <h4>{{ resolvedEmptyTitle() }}</h4>
+      <p>{{ resolvedEmptyMessage() }}</p>
+    </div>
+    <ng-content select="[emptyAction]"></ng-content>
+  </div>
+} @else {
+  <ng-content></ng-content>
+}

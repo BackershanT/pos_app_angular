@@ -1,17 +1,9 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { AuthState } from '../auth/auth.state';
+import { isUuid } from '../../shared/utils/uuid.util';
 import { environment } from '../../../environments/environment';
 
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-/**
- * Type guard for PostgreSQL UUID columns.
- * Non-UUID tenant identifiers silently return zero rows (and 22P02 on write),
- * which is why every tenant identifier crossing the repository boundary is validated here.
- */
-export function isUuid(value: string | null | undefined): value is string {
-  return typeof value === 'string' && UUID_PATTERN.test(value);
-}
+export { isUuid };
 
 /**
  * Single source of truth for the active tenant (business) and branch (store).

@@ -1,4 +1,4 @@
-import { computed, Injectable, signal } from '@angular/core';
+import { computed, signal } from '@angular/core';
 
 /**
  * Explicit asynchronous lifecycle for any data-backed screen.
@@ -28,10 +28,10 @@ export interface LoadResult {
 }
 
 /**
- * Standalone signal container for one load operation.
- * One instance per screen (or per independent panel on a screen).
+ * Plain signal container for one load operation (instantiate per screen with
+ * `new LoadState()` - it must not be a shared singleton, otherwise two features
+ * would overwrite each other's loading/error state).
  */
-@Injectable({ providedIn: 'root' })
 export class LoadState {
   private readonly _status = signal<LoadStatus>('idle');
   private readonly _error = signal<string | null>(null);
