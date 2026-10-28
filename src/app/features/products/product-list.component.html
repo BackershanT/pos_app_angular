@@ -13,15 +13,13 @@
 
   <!-- Filters & Search Toolbar -->
   <div class="toolbar-card glass-panel">
-    <div class="search-input-wrap">
-      <i class="pi pi-search"></i>
-      <input
-        type="text"
-        placeholder="Filter by Name, SKU, or Barcode..."
-        [value]="searchQuery()"
-        (input)="onSearch($event)"
-      />
-    </div>
+    <app-search-input
+      [value]="searchQuery()"
+      placeholder="Filter by Name, SKU, or Barcode..."
+      width="100%"
+      maxWidth="380px"
+      (valueChange)="onSearch($event)"
+    />
 
     <div class="category-filter-chips">
       @for (c of categories; track c) {
@@ -114,14 +112,14 @@
               <td>
                 <div class="product-identity">
                   <span class="product-name">{{ item.name }}</span>
-                  <span class="sku-badge">{{ item.sku }}</span>
+                  <app-badge variant="neutral">{{ item.sku }}</app-badge>
                 </div>
               </td>
               <td class="barcode-cell">
                 <i class="pi pi-barcode"></i>
                 <span>{{ item.barcode }}</span>
               </td>
-              <td><span class="category-pill">{{ item.category }}</span></td>
+              <td><app-badge variant="info">{{ item.category }}</app-badge></td>
               <td>{{ item.costPrice | number:'1.2-2' }} AED</td>
               <td class="selling-price-cell">{{ item.sellingPrice | number:'1.2-2' }} AED</td>
               <td>{{ (item.sellingPrice * 0.05) | number:'1.2-2' }} AED</td>
@@ -129,14 +127,14 @@
                 {{ (((item.sellingPrice - item.costPrice) / item.sellingPrice) * 100) | number:'1.0-0' }}%
               </td>
               <td>
-                <span class="stock-indicator" [class.low]="item.stock < 15">
+                <app-badge [variant]="item.stock === 0 ? 'danger' : (item.stock < 15 ? 'warning' : 'success')" [dot]="true">
                   {{ item.stock }} units
-                </span>
+                </app-badge>
               </td>
               <td>
-                <span class="status-badge" [class.active]="item.isActive">
+                <app-badge [variant]="item.isActive ? 'success' : 'neutral'" [dot]="true">
                   {{ item.isActive ? 'Active' : 'Inactive' }}
-                </span>
+                </app-badge>
               </td>
               <td>
                 <button

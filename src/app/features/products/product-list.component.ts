@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { PaginationComponent } from '../../shared/components/pagination/pagination.component';
 import { ProductCardComponent } from '../../shared/components/product-card/product-card.component';
+import { SearchInputComponent } from '../../shared/components/search-input/search-input.component';
+import { BadgeComponent } from '../../shared/components/badge/badge.component';
 import { ProductRepository } from '../../data-access/repositories/product.repository';
 
 export interface ProductItem {
@@ -23,7 +25,14 @@ export interface ProductItem {
 @Component({
   selector: 'app-product-list',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, PaginationComponent, ProductCardComponent],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    PaginationComponent,
+    ProductCardComponent,
+    SearchInputComponent,
+    BadgeComponent,
+  ],
   templateUrl: './product-list.component.html',
   styleUrl: './product-list.component.css',
 })
@@ -40,6 +49,7 @@ export class ProductListComponent implements OnInit {
   readonly isCloudConnected = signal<boolean>(false);
 
   categories = ['all', 'Beverages', 'Bakery', 'Main Meals', 'Desserts'];
+
 
   async ngOnInit() {
     await this.loadProductsFromSupabase();
@@ -117,9 +127,8 @@ export class ProductListComponent implements OnInit {
     return this.filteredProducts().slice(start, start + this.pageSize());
   });
 
-  onSearch(event: Event) {
-    const input = event.target as HTMLInputElement;
-    this.searchQuery.set(input.value);
+  onSearch(query: string) {
+    this.searchQuery.set(query);
     this.currentPage.set(1);
   }
 

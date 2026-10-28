@@ -9,15 +9,13 @@
 
   <!-- Filters Toolbar -->
   <div class="toolbar-card glass-panel">
-    <div class="search-input-wrap">
-      <i class="pi pi-search"></i>
-      <input
-        type="text"
-        placeholder="Search Invoice #, Customer, or Cashier..."
-        [value]="searchQuery()"
-        (input)="searchQuery.set($any($event.target).value); currentPage.set(1)"
-      />
-    </div>
+    <app-search-input
+      [value]="searchQuery()"
+      placeholder="Search Invoice #, Customer, or Cashier..."
+      width="100%"
+      maxWidth="380px"
+      (valueChange)="onSearch($event)"
+    />
 
     <div class="status-filters">
       <button
@@ -72,7 +70,7 @@
       <tbody>
         @for (sale of paginatedSales(); track sale.id) {
           <tr>
-            <td class="inv-code">{{ sale.invoiceNumber }}</td>
+            <td class="inv-code"><app-badge variant="neutral">{{ sale.invoiceNumber }}</app-badge></td>
             <td class="time-cell">{{ sale.date | dateFormat:'medium' }}</td>
             <td>{{ sale.customerName | truncate:20:true }}</td>
             <td>{{ sale.cashierName }}</td>
@@ -80,11 +78,14 @@
             <td>{{ sale.subtotal | currencyFormat }}</td>
             <td class="vat-cell">{{ sale.taxTotal | currencyFormat }}</td>
             <td class="total-cell">{{ sale.grandTotal | currencyFormat }}</td>
-            <td><span class="pay-method-badge">{{ sale.paymentMethod }}</span></td>
+            <td><app-badge variant="info">{{ sale.paymentMethod }}</app-badge></td>
             <td>
-              <span class="status-pill" [class.completed]="sale.status === 'completed'" [class.refunded]="sale.status === 'refunded'" [class.partial]="sale.status === 'partially_refunded'">
-                {{ sale.status | uppercase }}
-              </span>
+              <app-badge
+                [variant]="sale.status === 'completed' ? 'success' : (sale.status === 'refunded' ? 'danger' : 'warning')"
+                [dot]="true"
+              >
+                {{ sale.status === 'completed' ? 'COMPLETED' : (sale.status === 'refunded' ? 'REFUNDED' : 'PARTIAL') }}
+              </app-badge>
             </td>
             <td>
               <button class="btn-sm-view" (click)="openDetails(sale)">

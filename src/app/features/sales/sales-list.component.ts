@@ -2,6 +2,8 @@ import { Component, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { PaginationComponent } from '../../shared/components/pagination/pagination.component';
+import { SearchInputComponent } from '../../shared/components/search-input/search-input.component';
+import { BadgeComponent } from '../../shared/components/badge/badge.component';
 import { HasPermissionDirective } from '../../shared/directives/has-permission.directive';
 import { CurrencyFormatPipe } from '../../shared/pipes/currency-format.pipe';
 import { DateFormatPipe } from '../../shared/pipes/date-format.pipe';
@@ -28,6 +30,8 @@ export interface SaleTransaction {
     CommonModule,
     FormsModule,
     PaginationComponent,
+    SearchInputComponent,
+    BadgeComponent,
     HasPermissionDirective,
     CurrencyFormatPipe,
     DateFormatPipe,
@@ -41,6 +45,11 @@ export class SalesListComponent {
   selectedStatus = signal<string>('all');
   currentPage = signal<number>(1);
   pageSize = signal<number>(10);
+
+  onSearch(query: string) {
+    this.searchQuery.set(query);
+    this.currentPage.set(1);
+  }
 
   // Selected Sale Details Modal
   selectedSale = signal<SaleTransaction | null>(null);

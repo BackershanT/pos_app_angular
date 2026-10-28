@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { PaginationComponent } from '../../shared/components/pagination/pagination.component';
 import { ProductCardComponent } from '../../shared/components/product-card/product-card.component';
+import { SearchInputComponent } from '../../shared/components/search-input/search-input.component';
+import { BadgeComponent } from '../../shared/components/badge/badge.component';
 import { ProductRepository } from '../../data-access/repositories/product.repository';
 import { InventoryRepository } from '../../data-access/repositories/inventory.repository';
 
@@ -32,7 +34,14 @@ export interface StockMovementRecord {
 @Component({
   selector: 'app-inventory-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, PaginationComponent, ProductCardComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    PaginationComponent,
+    ProductCardComponent,
+    SearchInputComponent,
+    BadgeComponent,
+  ],
   templateUrl: './inventory-list.component.html',
   styleUrl: './inventory-list.component.css',
 })
@@ -47,6 +56,11 @@ export class InventoryListComponent implements OnInit {
   currentPage = signal<number>(1);
   pageSize = signal<number>(10);
   readonly isCloudConnected = signal<boolean>(false);
+
+  onSearch(query: string) {
+    this.searchQuery.set(query);
+    this.currentPage.set(1);
+  }
 
   async ngOnInit() {
     await this.loadInventoryFromSupabase();

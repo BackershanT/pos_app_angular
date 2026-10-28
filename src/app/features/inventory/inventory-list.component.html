@@ -30,15 +30,13 @@
   @if (activeTab() === 'stock') {
     <!-- Stock Tab Toolbar -->
     <div class="toolbar-card glass-panel">
-      <div class="search-input-wrap">
-        <i class="pi pi-search"></i>
-        <input
-          type="text"
-          placeholder="Search by SKU or Product name..."
-          [value]="searchQuery()"
-          (input)="searchQuery.set($any($event.target).value)"
-        />
-      </div>
+      <app-search-input
+        [value]="searchQuery()"
+        placeholder="Search by SKU or Product name..."
+        width="100%"
+        maxWidth="380px"
+        (valueChange)="onSearch($event)"
+      />
 
       <label class="checkbox-label">
         <input
@@ -122,9 +120,9 @@
           <tbody>
             @for (item of paginatedInventory(); track item.id) {
               <tr>
-                <td class="sku-cell">{{ item.sku }}</td>
+                <td class="sku-cell"><app-badge variant="neutral">{{ item.sku }}</app-badge></td>
                 <td class="bold-cell">{{ item.productName }}</td>
-                <td><span class="cat-chip">{{ item.category }}</span></td>
+                <td><app-badge variant="info">{{ item.category }}</app-badge></td>
                 <td class="qty-cell">
                   <strong>{{ item.quantityOnHand }}</strong> units
                 </td>
@@ -133,11 +131,11 @@
                 <td class="value-cell">{{ item.totalCostValuation | number:'1.2-2' }} AED</td>
                 <td>
                   @if (item.quantityOnHand <= 0) {
-                    <span class="badge out">Out of Stock</span>
+                    <app-badge variant="danger" [dot]="true">Out of Stock</app-badge>
                   } @else if (item.quantityOnHand <= item.reorderLevel) {
-                    <span class="badge low">Low Stock</span>
+                    <app-badge variant="warning" [dot]="true">Low Stock</app-badge>
                   } @else {
-                    <span class="badge good">In Stock</span>
+                    <app-badge variant="success" [dot]="true">In Stock</app-badge>
                   }
                 </td>
                 <td>
@@ -184,12 +182,12 @@
                 <small class="sku-dim">{{ m.sku }}</small>
               </td>
               <td>
-                <span class="delta-chip" [class.negative]="m.quantityDelta < 0" [class.positive]="m.quantityDelta > 0">
+                <app-badge [variant]="m.quantityDelta > 0 ? 'success' : 'danger'">
                   {{ m.quantityDelta > 0 ? '+' : '' }}{{ m.quantityDelta }}
-                </span>
+                </app-badge>
               </td>
               <td class="qty-cell"><strong>{{ m.balanceAfter }}</strong> units</td>
-              <td><span class="reason-pill">{{ m.reason | uppercase }}</span></td>
+              <td><app-badge variant="info">{{ m.reason | uppercase }}</app-badge></td>
               <td>{{ m.performedBy }}</td>
               <td class="notes-cell">{{ m.notes }}</td>
             </tr>
