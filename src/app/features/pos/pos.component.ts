@@ -156,6 +156,11 @@ export class PosComponent {
     this.orderDiscount.set(0);
   }
 
+  getCartQuantity(productId: string | number): number {
+    const item = this.cart().find((ci) => String(ci.product.id) === String(productId));
+    return item ? item.quantity : 0;
+  }
+
   openPaymentModal() {
     if (this.cart().length === 0) return;
     this.amountTendered.set(this.cartCalculations().grandTotal);

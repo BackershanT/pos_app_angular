@@ -26,18 +26,35 @@
 
   <!-- Left Side: Catalog & Search & Filters -->
   <section class="pos-catalog" [class.mobile-hidden]="layout.activeMobilePosTab() === 'cart'">
-    <!-- Categories Navigation Pills -->
-    <div class="category-pills">
-      @for (cat of categories; track cat.id) {
-        <button
-          class="cat-pill"
-          [class.active]="selectedCategory() === cat.id"
-          (click)="selectedCategory.set(cat.id)"
-        >
-          <i [class]="cat.icon"></i>
-          <span>{{ cat.name }}</span>
-        </button>
-      }
+    <!-- Catalog Header: Search & Category Navigation Pills -->
+    <div class="catalog-toolbar">
+      <div class="catalog-search-wrap">
+        <i class="pi pi-search"></i>
+        <input
+          type="text"
+          placeholder="Filter catalog or search by SKU..."
+          [value]="searchQuery()"
+          (input)="searchQuery.set($any($event.target).value)"
+        />
+        @if (searchQuery()) {
+          <button type="button" class="clear-search-btn" (click)="searchQuery.set('')" title="Clear filter">
+            <i class="pi pi-times"></i>
+          </button>
+        }
+      </div>
+
+      <div class="category-pills">
+        @for (cat of categories; track cat.id) {
+          <button
+            class="cat-pill"
+            [class.active]="selectedCategory() === cat.id"
+            (click)="selectedCategory.set(cat.id)"
+          >
+            <i [class]="cat.icon"></i>
+            <span>{{ cat.name }}</span>
+          </button>
+        }
+      </div>
     </div>
 
     <!-- Products Grid -->
@@ -46,6 +63,7 @@
         <app-product-card
           [product]="product"
           mode="pos"
+          [cartQuantity]="getCartQuantity(product.id)"
           (selected)="addToCart($event)"
           (actionClick)="addToCart($event)"
         />

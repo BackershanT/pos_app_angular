@@ -139,4 +139,16 @@ describe('ProductCardComponent', () => {
 
     expect(emitted).toBe(true);
   });
+
+  it('should render cart quantity pill and has-cart-items class when cartQuantity > 0', () => {
+    componentRef.setInput('cartQuantity', 3);
+    fixture.detectChanges();
+
+    const el: HTMLElement = fixture.nativeElement;
+    const cardEl = el.querySelector('.product-card');
+    const pill = el.querySelector('.cart-quantity-pill');
+
+    expect(cardEl?.classList.contains('has-cart-items')).toBe(true);
+    expect(pill?.textContent?.trim()).toContain('3');
+  });
 });

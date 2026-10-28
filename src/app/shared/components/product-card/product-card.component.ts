@@ -48,6 +48,9 @@ export class ProductCardComponent {
   /** Whether the card is disabled from interactions */
   readonly disabled = input<boolean>(false);
 
+  /** Current quantity of this product in active cart */
+  readonly cartQuantity = input<number>(0);
+
   /** Emits when the card is clicked or activated */
   readonly selected = output<BaseProductCardInput>();
 

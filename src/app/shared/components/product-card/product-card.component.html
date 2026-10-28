@@ -5,6 +5,7 @@
   [class.mode-compact]="mode() === 'compact'"
   [class.out-of-stock]="isOutOfStock()"
   [class.disabled]="disabled()"
+  [class.has-cart-items]="cartQuantity() > 0"
   (click)="onCardClick()"
   (keydown)="onKeyDown($event)"
   tabindex="0"
@@ -14,6 +15,14 @@
   <!-- Card Visual Header -->
   <div class="card-icon-wrapper" [style.background]="color() + '22'">
     <span class="product-emoji">{{ icon() }}</span>
+
+    <!-- In-Cart Quantity Indicator (POS Mode) -->
+    @if (cartQuantity() > 0) {
+      <div class="cart-quantity-pill" title="Units in active ticket">
+        <i class="pi pi-shopping-bag"></i>
+        <span>{{ cartQuantity() }}</span>
+      </div>
+    }
 
     <!-- Stock Badge Indicator -->
     @if (showStock()) {
