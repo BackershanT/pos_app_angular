@@ -6,6 +6,7 @@ import { BarcodeInputDirective } from '../../shared/directives/barcode-input.dir
 import { NotificationService } from '../../core/services/notification.service';
 import { ThemeService } from '../../core/services/theme.service';
 import { LayoutService } from '../../core/services/layout.service';
+import { RealtimeService } from '../../data-access/supabase/realtime.service';
 
 @Component({
   selector: 'app-topbar',
@@ -19,6 +20,7 @@ export class TopbarComponent {
   private readonly router = inject(Router);
   readonly themeService = inject(ThemeService);
   readonly layout = inject(LayoutService);
+  readonly realtime = inject(RealtimeService);
 
   currentTime = signal(new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
 

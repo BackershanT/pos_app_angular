@@ -128,6 +128,36 @@
   animation: pulse-ring 2s infinite;
 }
 
+.status-chip.status-green .pulse-indicator {
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+}
+
+.status-chip.status-green .status-label {
+  color: #10b981;
+  font-weight: 600;
+}
+
+.status-chip.status-orange .pulse-indicator {
+  background: #f59e0b;
+  box-shadow: 0 0 8px #f59e0b;
+}
+
+.status-chip.status-orange .status-label {
+  color: #f59e0b;
+  font-weight: 600;
+}
+
+.status-chip.status-red .pulse-indicator {
+  background: #ef4444;
+  box-shadow: 0 0 8px #ef4444;
+}
+
+.status-chip.status-red .status-label {
+  color: #ef4444;
+  font-weight: 600;
+}
+
 @keyframes pulse-ring {
   0% { transform: scale(0.95); opacity: 1; }
   50% { transform: scale(1.2); opacity: 0.7; }

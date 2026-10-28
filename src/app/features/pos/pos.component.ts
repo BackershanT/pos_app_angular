@@ -132,6 +132,7 @@ export class PosComponent implements OnInit {
   private readonly categoryRepo = inject(CategoryRepository);
   private readonly orderRepo = inject(OrderRepository);
   readonly layout = inject(LayoutService);
+  readonly realtime = inject(RealtimeService);
 
   readonly isCloudConnected = signal<boolean>(false);
   readonly isLoadingCatalog = signal<boolean>(false);

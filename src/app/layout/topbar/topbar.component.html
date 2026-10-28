@@ -36,9 +36,15 @@
 
   <!-- Right: System Status, Live Clock & Actions -->
   <div class="topbar-right">
-    <div class="status-chip" title="Supabase Realtime Sync Active">
+    <div
+      class="status-chip"
+      [ngClass]="realtime.colorClass()"
+      [title]="'Supabase Realtime: ' + realtime.statusText()"
+      (click)="realtime.reconnect()"
+      style="cursor: pointer;"
+    >
       <span class="pulse-indicator"></span>
-      <span class="status-label">Realtime</span>
+      <span class="status-label">{{ realtime.status() === 'connected' ? 'Realtime' : realtime.statusText() }}</span>
     </div>
 
     <div class="live-clock">

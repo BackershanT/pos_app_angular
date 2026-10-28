@@ -27,9 +27,16 @@
   gap: 0.75rem;
 }
 
+.catalog-search-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+}
+
 .catalog-search-wrap {
   position: relative;
-  width: 100%;
+  flex: 1;
 }
 
 .catalog-search-wrap i {
@@ -84,7 +91,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
-  padding: 0.35rem 0.85rem;
+  padding: 0.4rem 0.85rem;
   border-radius: 9999px;
   font-size: 0.72rem;
   font-weight: 600;
@@ -94,13 +101,31 @@
   border: 1px solid rgba(245, 158, 11, 0.28);
   white-space: nowrap;
   user-select: none;
+  cursor: pointer;
+  flex-shrink: 0;
   transition: all 0.25s ease;
 }
 
+.cloud-status-badge.status-green,
 .cloud-status-badge.connected {
-  background: rgba(16, 185, 129, 0.12);
+  background: rgba(16, 185, 129, 0.14);
   color: #10b981;
-  border-color: rgba(16, 185, 129, 0.32);
+  border-color: rgba(16, 185, 129, 0.35);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.15);
+}
+
+.cloud-status-badge.status-orange {
+  background: rgba(245, 158, 11, 0.14);
+  color: #f59e0b;
+  border-color: rgba(245, 158, 11, 0.35);
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.12);
+}
+
+.cloud-status-badge.status-red {
+  background: rgba(239, 68, 68, 0.14);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.35);
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.18);
 }
 
 .cloud-status-badge .status-dot {
@@ -711,29 +736,16 @@
     gap: 0.75rem;
   }
 
-  .product-card {
-    padding: 0.75rem;
-  }
 
-  .card-icon-wrapper {
-    height: 75px;
-  }
-
-  .product-emoji {
-    font-size: 2.2rem;
-  }
-
-  .product-title {
-    font-size: 0.85rem;
-  }
-
-  .product-price {
-    font-size: 1rem;
-  }
 }
 
 /* Mobile (< 768px) */
 @media (max-width: 767px) {
+  .catalog-search-row {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
   .pos-container {
     flex-direction: column;
     height: auto;

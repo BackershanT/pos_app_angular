@@ -28,24 +28,31 @@
   <section class="pos-catalog" [class.mobile-hidden]="layout.activeMobilePosTab() === 'cart'">
     <!-- Catalog Header: Search & Category Navigation Pills -->
     <div class="catalog-toolbar">
-      <div class="catalog-search-wrap">
-        <i class="pi pi-search"></i>
-        <input
-          type="text"
-          placeholder="Filter catalog or search by SKU..."
-          [value]="searchQuery()"
-          (input)="searchQuery.set($any($event.target).value)"
-        />
-        @if (searchQuery()) {
-          <button type="button" class="clear-search-btn" (click)="searchQuery.set('')" title="Clear filter">
-            <i class="pi pi-times"></i>
-          </button>
-        }
-      </div>
+      <div class="catalog-search-row">
+        <div class="catalog-search-wrap">
+          <i class="pi pi-search"></i>
+          <input
+            type="text"
+            placeholder="Filter catalog or search by SKU..."
+            [value]="searchQuery()"
+            (input)="searchQuery.set($any($event.target).value)"
+          />
+          @if (searchQuery()) {
+            <button type="button" class="clear-search-btn" (click)="searchQuery.set('')" title="Clear filter">
+              <i class="pi pi-times"></i>
+            </button>
+          }
+        </div>
 
-      <div class="cloud-status-badge" [class.connected]="isCloudConnected()" [title]="isCloudConnected() ? 'Connected live to Supabase Cloud' : 'Supabase integration ready. Seed database via Supabase Dashboard or npm run db:seed'">
-        <span class="status-dot"></span>
-        <span>{{ isCloudConnected() ? 'Supabase Live' : 'Supabase Ready' }}</span>
+        <div
+          class="cloud-status-badge"
+          [ngClass]="realtime.colorClass()"
+          [title]="'Supabase Realtime: ' + realtime.statusText()"
+          (click)="realtime.reconnect()"
+        >
+          <span class="status-dot"></span>
+          <span>{{ realtime.statusText() }}</span>
+        </div>
       </div>
 
       <div class="category-pills">
