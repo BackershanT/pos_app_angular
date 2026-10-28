@@ -45,19 +45,21 @@ export class ThemeService {
 
     this.themePreference.set(validPreference);
 
-    // Watch OS color-scheme changes
-    this.mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    this.mediaListener = (e: MediaQueryListEvent) => {
-      if (this.themePreference() === 'system') {
-        const effective: ActiveTheme = e.matches ? 'dark' : 'light';
-        this.applyEffectiveTheme(effective);
-      }
-    };
+    // Watch OS color-scheme changes if window.matchMedia is available
+    if (typeof window.matchMedia === 'function') {
+      this.mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      this.mediaListener = (e: MediaQueryListEvent) => {
+        if (this.themePreference() === 'system') {
+          const effective: ActiveTheme = e.matches ? 'dark' : 'light';
+          this.applyEffectiveTheme(effective);
+        }
+      };
 
-    if (this.mediaQuery.addEventListener) {
-      this.mediaQuery.addEventListener('change', this.mediaListener);
-    } else if ((this.mediaQuery as any).addListener) {
-      (this.mediaQuery as any).addListener(this.mediaListener);
+      if (this.mediaQuery.addEventListener) {
+        this.mediaQuery.addEventListener('change', this.mediaListener);
+      } else if ((this.mediaQuery as any).addListener) {
+        (this.mediaQuery as any).addListener(this.mediaListener);
+      }
     }
 
     // Apply initial theme

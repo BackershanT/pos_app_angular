@@ -47,9 +47,9 @@ describe('PosComponent (UAE POS Register & Terminal Checkout)', () => {
     expect(component.cart()[0].quantity).toBe(1);
 
     const totals = component.cartCalculations();
-    expect(totals.grandTotal).toBe(24.0);
-    expect(totals.taxTotal).toBe(1.14); // 5% inclusive
-    expect(totals.subtotal).toBe(22.86);
+    expect(totals.subtotal).toBe(24.0);
+    expect(totals.taxTotal).toBe(1.2); // 5% of 24.00
+    expect(totals.grandTotal).toBe(25.2);
   });
 
   it('should increment quantity when product is added repeatedly', () => {
@@ -59,35 +59,34 @@ describe('PosComponent (UAE POS Register & Terminal Checkout)', () => {
 
     expect(component.cart().length).toBe(1);
     expect(component.cart()[0].quantity).toBe(2);
-    expect(component.cartCalculations().grandTotal).toBe(48.0);
+    expect(component.cartCalculations().grandTotal).toBe(50.4);
   });
 
   it('should increment, decrement, and remove line item from cart', () => {
     const spanishLatte = component.products[0];
     component.addToCart(spanishLatte);
 
-    const cartItem = component.cart()[0];
-    component.incrementQuantity(cartItem);
+    component.incrementQuantity(component.cart()[0]);
     expect(component.cart()[0].quantity).toBe(2);
 
-    component.decrementQuantity(cartItem);
+    component.decrementQuantity(component.cart()[0]);
     expect(component.cart()[0].quantity).toBe(1);
 
-    component.decrementQuantity(cartItem);
+    component.decrementQuantity(component.cart()[0]);
     expect(component.cart().length).toBe(0);
   });
 
   it('should open payment modal and calculate change due for cash tender', () => {
-    const item = component.products[0]; // 24.00 AED
+    const item = component.products[0]; // 24.00 AED + 5% VAT = 25.20 AED
     component.addToCart(item);
 
     component.openPaymentModal();
     expect(component.isPaymentModalOpen()).toBe(true);
-    expect(component.amountTendered()).toBe(24.0);
+    expect(component.amountTendered()).toBe(25.2);
 
     // Cashier enters 50 AED cash note
     component.amountTendered.set(50.0);
-    expect(component.changeDue()).toBe(26.0);
+    expect(component.changeDue()).toBe(24.8);
   });
 
   it('should authorize sale, clear cart, and generate simplified tax invoice', () => {
@@ -100,6 +99,6 @@ describe('PosComponent (UAE POS Register & Terminal Checkout)', () => {
     expect(component.cart().length).toBe(0);
     expect(component.lastInvoice()).toBeDefined();
     expect(component.lastInvoice()?.trn).toBe('100234892300003');
-    expect(component.lastInvoice()?.grandTotal).toBe(24.0);
+    expect(component.lastInvoice()?.grandTotal).toBe(25.2);
   });
 });
