@@ -72,15 +72,21 @@ export class OrderRepository extends BaseRepository {
 
   /**
    * Fetches a sale with line items, payments, and snapshot details.
+   * Returns null only when the sale genuinely does not exist; transport, RLS and
+   * query failures are raised so the UI can show an error state instead of an empty ticket.
    */
   async getSaleById(saleId: string): Promise<SaleWithDetails | null> {
     const { data: sale, error: saleError } = await this.supabase
       .from('sales')
       .select('*')
       .eq('id', saleId)
-      .single();
+      .maybeSingle();
 
-    if (saleError || !sale) {
+    if (saleError) {
+      throw new Error(`Failed to fetch sale ${saleId}: ${saleError.message}`);
+    }
+
+    if (!sale) {
       return null;
     }
 
@@ -88,6 +94,13 @@ export class OrderRepository extends BaseRepository {
       this.supabase.from('sale_items').select('*').eq('sale_id', saleId),
       this.supabase.from('payments').select('*').eq('sale_id', saleId),
     ]);
+
+    if (itemsResult.error) {
+      throw new Error(`Failed to fetch sale line items: ${itemsResult.error.message}`);
+    }
+    if (paymentsResult.error) {
+      throw new Error(`Failed to fetch sale payments: ${paymentsResult.error.message}`);
+    }
 
     const saleRecord = sale as Sale;
 

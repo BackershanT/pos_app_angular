@@ -3,7 +3,7 @@
   publish = "dist/pos_app/browser"
 
 [build.environment]
-  NODE_VERSION = "22"
+  NODE_VERSION = "20"
   NPM_FLAGS = "--legacy-peer-deps"
 
 [[plugins]]

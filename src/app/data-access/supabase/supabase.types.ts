@@ -1005,6 +1005,16 @@ export type Database = {
         }
         Returns: string
       }
+      record_stock_adjustment: {
+        Args: {
+          p_store_id: string
+          p_product_id: string
+          p_new_quantity: number
+          p_reason: string
+          p_notes?: string | null
+        }
+        Returns: Json
+      }
       process_sale_refund: {
         Args: {
           p_sale_id: string

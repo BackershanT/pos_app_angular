@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { BaseRepository } from './base.repository';
+import { assertUuid } from '../../shared/utils/uuid.util';
 import {
   StoreInventory,
   StoreInventoryInsert,
@@ -53,12 +54,19 @@ export class InventoryRepository extends BaseRepository {
   }
 
   /**
-   * Records a manual stock movement and updates inventory quantity.
+   * Records a manual stock movement in the audit ledger.
+   *
+   * NOTE: stock_movements exposes SELECT-only RLS to clients, so this path is only
+   * usable by privileged contexts. UI flows must call adjustStock() (RPC) instead.
    */
   async recordMovement(movement: StockMovementInsert): Promise<StockMovement> {
+    assertUuid(movement.business_id, 'Business id');
+    assertUuid(movement.store_id, 'Store id');
+    assertUuid(movement.product_id, 'Product id');
+
     const { data, error } = await this.supabase
       .from('stock_movements')
-      .insert(movement as any)
+      .insert(movement)
       .select()
       .single();
 
@@ -70,43 +78,39 @@ export class InventoryRepository extends BaseRepository {
   }
 
   /**
-   * Adjusts stock quantity for a product in store inventory.
+   * Sets the on-hand quantity for one product in one branch.
+   *
+   * Runs the record_stock_adjustment RPC: tenancy is derived from the store row and
+   * the ledger delta is computed from the locked balance server-side, so the client
+   * can never report an absolute quantity as a movement delta. Balance and audit
+   * row commit atomically; direct upserts are rejected by store_inventory RLS.
    */
   async adjustStock(
     storeId: string,
     productId: string,
     newQuantity: number,
     reason: StockMovementReason,
-    notes?: string
+    notes?: string,
   ): Promise<StoreInventory> {
-    const { data, error } = await this.supabase
-      .from('store_inventory')
-      .upsert(
-        {
-          store_id: storeId,
-          product_id: productId,
-          quantity_on_hand: newQuantity,
-          updated_at: new Date().toISOString(),
-        } as any,
-        { onConflict: 'store_id,product_id' }
-      )
-      .select()
-      .single();
+    assertUuid(storeId, 'Store id');
+    assertUuid(productId, 'Product id');
 
-    if (error) {
-      throw new Error(`Failed to adjust inventory: ${error.message}`);
+    if (!Number.isFinite(newQuantity) || newQuantity < 0) {
+      throw new Error('Adjusted stock quantity must be zero or greater.');
     }
 
-    // Also record the movement ledger entry
-    await this.recordMovement({
-      business_id: 'b0000000-0000-0000-0000-000000000001',
-      store_id: storeId,
-      product_id: productId,
-      quantity_delta: newQuantity,
-      balance_after: newQuantity,
-      reason: reason as any,
+    const { data, error } = await this.supabase.rpc('record_stock_adjustment', {
+      p_store_id: storeId,
+      p_product_id: productId,
+      p_new_quantity: newQuantity,
+      p_reason: reason,
+      p_notes: notes ?? null,
     });
 
-    return data as StoreInventory;
+    if (error) {
+      throw new Error(`Stock adjustment failed: ${error.message}`);
+    }
+
+    return data as unknown as StoreInventory;
   }
 }

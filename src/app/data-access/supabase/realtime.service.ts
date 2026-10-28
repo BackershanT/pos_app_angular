@@ -1,4 +1,5 @@
-import { Injectable, signal, computed, OnDestroy } from '@angular/core';
+import { Injectable, signal, computed, OnDestroy, inject, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { getSupabaseClient } from './supabase.client';
 
@@ -8,6 +9,7 @@ export type RealtimeConnectionStatus = 'connected' | 'connecting' | 'disconnecte
   providedIn: 'root',
 })
 export class RealtimeService implements OnDestroy {
+  private readonly platformId = inject(PLATFORM_ID);
   private readonly supabase = getSupabaseClient();
   private channel: RealtimeChannel | null = null;
   private onlineHandler: (() => void) | null = null;
@@ -63,14 +65,21 @@ export class RealtimeService implements OnDestroy {
   });
 
   constructor() {
-    this.initRealtime();
-    this.registerNetworkListeners();
+    if (isPlatformBrowser(this.platformId)) {
+      this.initRealtime();
+      this.registerNetworkListeners();
+    } else {
+      this.status.set('connected');
+    }
   }
 
   /**
    * Initializes WebSocket connection to Supabase Realtime channel
    */
   private initRealtime() {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
     try {
       this.status.set('connecting');
 

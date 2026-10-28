@@ -1,6 +1,23 @@
 import { Injectable } from '@angular/core';
 import { BaseRepository } from './base.repository';
-import { Product, ProductInsert, ProductUpdate, ProductWithInventory } from '../models/product.model';
+import { assertUuid } from '../../shared/utils/uuid.util';
+import {
+  Product,
+  ProductCatalogResult,
+  ProductInsert,
+  ProductUpdate,
+  ProductWithInventory,
+} from '../models/product.model';
+
+/** Catalog page ceiling: covers a small-retail branch without over-fetching. */
+const DEFAULT_CATALOG_PAGE = 500;
+
+/** Stable slug used to match catalog products against POS category tabs. */
+function slugifyCategory(description: string | null | undefined, name: string | null | undefined): string {
+  const raw = (description || name || '').trim().toLowerCase();
+  if (!raw) return 'general';
+  return raw.replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'general';
+}
 
 @Injectable({
   providedIn: 'root',
@@ -24,31 +41,72 @@ export class ProductRepository extends BaseRepository {
   }
 
   /**
-   * Fetches products with joined category and store inventory for POS registers.
+   * Fetches the branch catalog with on-hand stock resolved for ONE store.
+   *
+   * Inventory is queried explicitly by store_id instead of relying on an embedded
+   * `store_inventory[0]`: a multi-store product returns one row per branch and the
+   * first element of that array belongs to an arbitrary branch.
+   * Products without an inventory row are reported as untracked (never as stock of 25).
    */
-  async getProductsWithInventory(limit = 100): Promise<ProductWithInventory[]> {
-    const { data, error } = await this.supabase
-      .from('products')
-      .select('*, categories(id, name, description), store_inventory(quantity_on_hand, reorder_level)')
-      .eq('is_active', true)
-      .order('name', { ascending: true })
-      .limit(limit);
+  async getProductsWithInventory(
+    storeId: string,
+    options: { limit?: number; includeInactive?: boolean } = {},
+  ): Promise<ProductCatalogResult> {
+    assertUuid(storeId, 'Store id');
+    const limit = Math.max(1, options.limit ?? DEFAULT_CATALOG_PAGE);
 
-    if (error) {
-      throw new Error(`Failed to fetch products with inventory: ${error.message}`);
+    let productsQuery = this.supabase
+      .from('products')
+      .select('*, categories(id, name, description)')
+      .order('name', { ascending: true })
+      // One extra row is fetched purely to detect a truncated catalog.
+      .range(0, limit);
+
+    if (!options.includeInactive) {
+      productsQuery = productsQuery.eq('is_active', true);
     }
 
-    return ((data as any[]) ?? []).map((p: any) => {
-      const inv = Array.isArray(p.store_inventory) ? p.store_inventory[0] : p.store_inventory;
+    const [productsResult, inventoryResult] = await Promise.all([
+      productsQuery,
+      this.supabase
+        .from('store_inventory')
+        .select('product_id, quantity_on_hand, reorder_level')
+        .eq('store_id', storeId),
+    ]);
+
+    if (productsResult.error) {
+      throw new Error(`Failed to fetch products: ${productsResult.error.message}`);
+    }
+    if (inventoryResult.error) {
+      throw new Error(`Failed to fetch branch inventory levels: ${inventoryResult.error.message}`);
+    }
+
+    const rows = (productsResult.data as any[]) ?? [];
+    const truncated = rows.length > limit;
+    const page = truncated ? rows.slice(0, limit) : rows;
+
+    const inventoryByProduct = new Map<string, { quantity: number; reorder: number | null }>();
+    for (const row of (inventoryResult.data as any[]) ?? []) {
+      inventoryByProduct.set(String(row.product_id), {
+        quantity: Number(row.quantity_on_hand ?? 0),
+        reorder: row.reorder_level == null ? null : Number(row.reorder_level),
+      });
+    }
+
+    const products: ProductWithInventory[] = page.map((p: any) => {
+      const inv = inventoryByProduct.get(String(p.id));
       const cat = p.categories;
       return {
         ...p,
-        category_name: cat?.name || 'General',
-        category_code: cat?.description || cat?.name?.toLowerCase() || 'general',
-        quantity_on_hand: inv?.quantity_on_hand != null ? Number(inv.quantity_on_hand) : 25,
-        reorder_level: inv?.reorder_level != null ? Number(inv.reorder_level) : 10,
+        category_name: cat?.name || 'Uncategorized',
+        category_code: slugifyCategory(cat?.description, cat?.name),
+        quantity_on_hand: inv?.quantity ?? 0,
+        reorder_level: inv?.reorder ?? null,
+        inventory_tracked: Boolean(inv),
       };
     });
+
+    return { products, truncated };
   }
 
   /**
