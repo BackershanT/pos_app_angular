@@ -43,6 +43,11 @@
         }
       </div>
 
+      <div class="cloud-status-badge" [class.connected]="isCloudConnected()" [title]="isCloudConnected() ? 'Connected live to Supabase Cloud' : 'Supabase integration ready. Seed database via Supabase Dashboard or npm run db:seed'">
+        <span class="status-dot"></span>
+        <span>{{ isCloudConnected() ? 'Supabase Live' : 'Supabase Ready' }}</span>
+      </div>
+
       <div class="category-pills">
         @for (cat of categories; track cat.id) {
           <button

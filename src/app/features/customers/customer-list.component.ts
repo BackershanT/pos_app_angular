@@ -1,7 +1,8 @@
-import { Component, computed, signal } from '@angular/core';
+import { Component, computed, signal, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { PaginationComponent } from '../../shared/components/pagination/pagination.component';
+import { CustomerRepository } from '../../data-access/repositories/customer.repository';
 
 export interface CustomerRecord {
   id: string;
@@ -21,11 +22,40 @@ export interface CustomerRecord {
   templateUrl: './customer-list.component.html',
   styleUrl: './customer-list.component.css',
 })
-export class CustomerListComponent {
+export class CustomerListComponent implements OnInit {
+  private readonly customerRepo = inject(CustomerRepository);
+
   searchQuery = signal<string>('');
   currentPage = signal<number>(1);
   pageSize = signal<number>(10);
   isAddModalOpen = signal<boolean>(false);
+  readonly isCloudConnected = signal<boolean>(false);
+
+  async ngOnInit() {
+    await this.loadCustomersFromSupabase();
+  }
+
+  async loadCustomersFromSupabase() {
+    try {
+      const data = await this.customerRepo.getCustomers();
+      if (data && data.length > 0) {
+        const mapped: CustomerRecord[] = data.map((c) => ({
+          id: c.id,
+          name: c.name,
+          phone: c.phone || 'N/A',
+          email: c.email || 'N/A',
+          loyaltyPoints: Number(c.loyalty_points || 0),
+          totalOrders: 0,
+          totalSpent: 0,
+          taxId: c.tax_id || undefined,
+        }));
+        this.customers.set(mapped);
+        this.isCloudConnected.set(true);
+      }
+    } catch (err) {
+      console.warn('Supabase customer load deferred:', err);
+    }
+  }
 
   customers = signal<CustomerRecord[]>([
     { id: 'c1', name: 'Ahmed Al-Maktoum', phone: '+971 50 123 4567', email: 'ahmed@example.ae', loyaltyPoints: 420, totalOrders: 18, totalSpent: 1240.0 },

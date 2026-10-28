@@ -1,8 +1,10 @@
-import { Component, computed, signal } from '@angular/core';
+import { Component, computed, signal, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { PaginationComponent } from '../../shared/components/pagination/pagination.component';
 import { ProductCardComponent } from '../../shared/components/product-card/product-card.component';
+import { ProductRepository } from '../../data-access/repositories/product.repository';
+import { InventoryRepository } from '../../data-access/repositories/inventory.repository';
 
 export interface InventoryItem {
   id: string;
@@ -34,13 +36,47 @@ export interface StockMovementRecord {
   templateUrl: './inventory-list.component.html',
   styleUrl: './inventory-list.component.css',
 })
-export class InventoryListComponent {
+export class InventoryListComponent implements OnInit {
+  private readonly productRepo = inject(ProductRepository);
+  private readonly inventoryRepo = inject(InventoryRepository);
+
   activeTab = signal<'stock' | 'movements'>('stock');
   stockViewMode = signal<'table' | 'grid'>('table');
   searchQuery = signal<string>('');
   onlyLowStock = signal<boolean>(false);
   currentPage = signal<number>(1);
   pageSize = signal<number>(10);
+  readonly isCloudConnected = signal<boolean>(false);
+
+  async ngOnInit() {
+    await this.loadInventoryFromSupabase();
+  }
+
+  async loadInventoryFromSupabase() {
+    try {
+      const data = await this.productRepo.getProductsWithInventory();
+      if (data && data.length > 0) {
+        const mapped: InventoryItem[] = data.map((p) => {
+          const qty = p.quantity_on_hand != null ? Number(p.quantity_on_hand) : 25;
+          const cost = Number(p.cost_price || 0);
+          return {
+            id: p.id,
+            sku: p.sku,
+            productName: p.name,
+            category: p.category_name || 'General',
+            quantityOnHand: qty,
+            reorderLevel: p.reorder_level != null ? Number(p.reorder_level) : 10,
+            unitCost: cost,
+            totalCostValuation: Math.round(qty * cost * 100) / 100,
+          };
+        });
+        this.inventory.set(mapped);
+        this.isCloudConnected.set(true);
+      }
+    } catch (err) {
+      console.warn('Supabase inventory load deferred:', err);
+    }
+  }
 
   setStockViewMode(mode: 'table' | 'grid') {
     this.stockViewMode.set(mode);

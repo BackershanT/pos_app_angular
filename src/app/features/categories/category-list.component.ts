@@ -1,7 +1,8 @@
-import { Component, computed, signal } from '@angular/core';
+import { Component, computed, signal, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { PaginationComponent } from '../../shared/components/pagination/pagination.component';
+import { CategoryRepository } from '../../data-access/repositories/category.repository';
 
 export interface CategoryItem {
   id: string;
@@ -21,12 +22,41 @@ export interface CategoryItem {
   templateUrl: './category-list.component.html',
   styleUrl: './category-list.component.css',
 })
-export class CategoryListComponent {
+export class CategoryListComponent implements OnInit {
+  private readonly categoryRepo = inject(CategoryRepository);
+
   searchQuery = signal<string>('');
   currentPage = signal<number>(1);
   pageSize = signal<number>(8);
   isAddModalOpen = signal<boolean>(false);
   editingCategory = signal<CategoryItem | null>(null);
+  readonly isCloudConnected = signal<boolean>(false);
+
+  async ngOnInit() {
+    await this.loadCategoriesFromSupabase();
+  }
+
+  async loadCategoriesFromSupabase() {
+    try {
+      const data = await this.categoryRepo.getCategories();
+      if (data && data.length > 0) {
+        const mapped: CategoryItem[] = data.map((c, idx) => ({
+          id: c.id,
+          name: c.name,
+          code: c.description || c.name.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+          icon: this.iconChoices[idx % this.iconChoices.length] || 'pi pi-box',
+          color: this.colorPalette[idx % this.colorPalette.length] || '#3b82f6',
+          description: c.description || c.name,
+          productCount: 6,
+          isActive: true,
+        }));
+        this.categories.set(mapped);
+        this.isCloudConnected.set(true);
+      }
+    } catch (err) {
+      console.warn('Supabase category load deferred:', err);
+    }
+  }
 
   // Palette choices for categories
   readonly colorPalette = [

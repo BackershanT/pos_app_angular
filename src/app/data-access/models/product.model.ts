@@ -8,4 +8,5 @@ export interface ProductWithInventory extends Product {
   quantity_on_hand?: number;
   reorder_level?: number;
   category_name?: string;
+  category_code?: string;
 }

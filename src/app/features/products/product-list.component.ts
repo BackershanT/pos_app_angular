@@ -1,8 +1,9 @@
-import { Component, computed, signal } from '@angular/core';
+import { Component, computed, signal, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { PaginationComponent } from '../../shared/components/pagination/pagination.component';
 import { ProductCardComponent } from '../../shared/components/product-card/product-card.component';
+import { ProductRepository } from '../../data-access/repositories/product.repository';
 
 export interface ProductItem {
   id: string;
@@ -26,7 +27,9 @@ export interface ProductItem {
   templateUrl: './product-list.component.html',
   styleUrl: './product-list.component.css',
 })
-export class ProductListComponent {
+export class ProductListComponent implements OnInit {
+  private readonly productRepo = inject(ProductRepository);
+
   searchQuery = signal<string>('');
   selectedCategory = signal<string>('all');
   currentPage = signal<number>(1);
@@ -34,8 +37,37 @@ export class ProductListComponent {
   isAddModalOpen = signal<boolean>(false);
   editingProduct = signal<ProductItem | null>(null);
   viewMode = signal<'grid' | 'table'>('grid');
+  readonly isCloudConnected = signal<boolean>(false);
 
   categories = ['all', 'Beverages', 'Bakery', 'Main Meals', 'Desserts'];
+
+  async ngOnInit() {
+    await this.loadProductsFromSupabase();
+  }
+
+  async loadProductsFromSupabase() {
+    try {
+      const data = await this.productRepo.getProductsWithInventory();
+      if (data && data.length > 0) {
+        const mapped: ProductItem[] = data.map((p) => ({
+          id: p.id,
+          name: p.name,
+          sku: p.sku,
+          barcode: p.barcode || '',
+          category: p.category_name || 'Beverages',
+          costPrice: Number(p.cost_price || 0),
+          sellingPrice: Number(p.selling_price || 0),
+          taxRate: Number(p.tax_rate || 0.05),
+          stock: p.quantity_on_hand != null ? Number(p.quantity_on_hand) : 25,
+          isActive: p.is_active ?? true,
+        }));
+        this.products.set(mapped);
+        this.isCloudConnected.set(true);
+      }
+    } catch (err) {
+      console.warn('Supabase product catalog deferred:', err);
+    }
+  }
 
   products = signal<ProductItem[]>([
     { id: '1', name: 'Spanish Latte (Iced)', sku: 'CF-001', barcode: '6291041001', category: 'Beverages', costPrice: 8.5, sellingPrice: 24.0, taxRate: 0.05, stock: 45, isActive: true },
