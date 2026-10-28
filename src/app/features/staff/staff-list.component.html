@@ -1,0 +1,251 @@
+<div class="feature-page">
+  <!-- Page Header -->
+  <div class="page-header">
+    <div>
+      <h2>Staff & Cashier PIN Access Management</h2>
+      <p class="page-subtitle">Configure cashiers, assign operational terminal roles, shift rotations, and 4-digit security PINs</p>
+    </div>
+    <button class="btn-primary" (click)="openAddModal()">
+      <i class="pi pi-user-plus"></i>
+      <span>Add Staff Member</span>
+    </button>
+  </div>
+
+  <!-- Search & Role Toolbar -->
+  <div class="toolbar-card glass-panel">
+    <div class="search-input-wrap">
+      <i class="pi pi-search"></i>
+      <input
+        type="text"
+        placeholder="Filter by Name, Employee Code, or Contact..."
+        [value]="searchQuery()"
+        (input)="onSearch($event)"
+      />
+    </div>
+
+    <div class="role-filter-chips">
+      @for (r of ['all', 'Head Cashier', 'Store Cashier', 'Store Manager', 'Inventory Specialist']; track r) {
+        <button
+          class="filter-chip"
+          [class.active]="selectedRole() === r"
+          (click)="onRoleSelect(r)"
+        >
+          {{ r === 'all' ? 'All Roles' : r }}
+        </button>
+      }
+    </div>
+  </div>
+
+  <!-- Staff Table -->
+  <div class="table-container glass-panel">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Cashier / Employee</th>
+          <th>Role</th>
+          <th>Contact Info</th>
+          <th>Assigned Terminal</th>
+          <th>Security PIN</th>
+          <th>Shift Status</th>
+          <th>Account</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (staff of paginatedStaff(); track staff.id) {
+          <tr>
+            <td>
+              <div class="cashier-cell">
+                <div class="cashier-avatar">
+                  {{ getInitials(staff.fullName) }}
+                </div>
+                <div class="cashier-info">
+                  <strong>{{ staff.fullName }}</strong>
+                  <small>{{ staff.employeeCode }}</small>
+                </div>
+              </div>
+            </td>
+            <td>
+              <span class="role-badge" [class]="'role-' + staff.role.toLowerCase().replace(' ', '-')">
+                <i class="pi pi-shield"></i>
+                <span>{{ staff.role }}</span>
+              </span>
+            </td>
+            <td>
+              <div class="contact-cell">
+                <span>{{ staff.email }}</span>
+                <small>{{ staff.phone }}</small>
+              </div>
+            </td>
+            <td>
+              <div class="terminal-badge">
+                <i class="pi pi-desktop"></i>
+                <span>{{ staff.assignedTerminal }}</span>
+              </div>
+            </td>
+            <td>
+              <button class="btn-pin-status" (click)="openPinModal(staff)" title="Click to reset PIN">
+                <i class="pi pi-lock"></i>
+                <span>{{ staff.hasPin ? '•••• Set' : 'Not Configured' }}</span>
+              </button>
+            </td>
+            <td>
+              <button
+                class="shift-pill"
+                [class.on-shift]="staff.isOnShift"
+                (click)="toggleShift(staff)"
+                [title]="staff.isOnShift ? 'Click to clock off' : 'Click to clock on shift'"
+              >
+                <span class="shift-dot"></span>
+                <span>{{ staff.isOnShift ? 'On Shift' : 'Off Shift' }}</span>
+              </button>
+            </td>
+            <td>
+              <button
+                class="status-toggle-pill"
+                [class.active]="staff.isActive"
+                (click)="toggleActive(staff)"
+              >
+                {{ staff.isActive ? 'Active' : 'Disabled' }}
+              </button>
+            </td>
+            <td>
+              <div class="staff-actions">
+                <button class="action-btn" (click)="openPinModal(staff)" title="Change Security PIN">
+                  <i class="pi pi-key"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="8" class="empty-cell">
+              <i class="pi pi-users"></i>
+              <p>No staff members found matching your search</p>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  @if (totalRecords() > pageSize()) {
+    <app-pagination
+      [totalRecords]="totalRecords()"
+      [pageSize]="pageSize()"
+      [currentPage]="currentPage()"
+      (pageChange)="currentPage.set($event)"
+    />
+  }
+</div>
+
+<!-- Add Staff Modal -->
+@if (isAddModalOpen()) {
+  <div class="modal-backdrop" (click)="closeAddModal()">
+    <div class="modal-dialog glass-panel" (click)="$event.stopPropagation()">
+      <div class="modal-head">
+        <div class="modal-title-row">
+          <i class="pi pi-user-plus"></i>
+          <h3>Register New Staff Member</h3>
+        </div>
+        <button class="close-btn" (click)="closeAddModal()">&times;</button>
+      </div>
+
+      <form [formGroup]="staffForm" (ngSubmit)="saveStaff()" class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Full Legal Name *</label>
+            <input type="text" formControlName="fullName" placeholder="e.g. Khalid Al-Amiri" class="form-input" />
+          </div>
+          <div class="form-group">
+            <label>Work Email Address *</label>
+            <input type="email" formControlName="email" placeholder="khalid.a@aeropos.ae" class="form-input" />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>UAE Mobile Number *</label>
+            <input type="text" formControlName="phone" placeholder="+971 50 123 4567" class="form-input" />
+          </div>
+          <div class="form-group">
+            <label>Operational Role *</label>
+            <select formControlName="role" class="form-select">
+              @for (r of availableRoles; track r) {
+                <option [value]="r">{{ r }}</option>
+              }
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Primary Terminal Assignment *</label>
+            <select formControlName="assignedTerminal" class="form-select">
+              @for (t of terminals; track t) {
+                <option [value]="t">{{ t }}</option>
+              }
+            </select>
+          </div>
+          <div class="form-group">
+            <label>4-Digit POS Register Passcode / PIN *</label>
+            <input
+              type="password"
+              maxlength="4"
+              formControlName="pin"
+              placeholder="4-digit PIN"
+              class="form-input"
+            />
+          </div>
+        </div>
+
+        <div class="modal-foot">
+          <button type="button" class="btn-cancel" (click)="closeAddModal()">Cancel</button>
+          <button type="submit" class="btn-save" [disabled]="staffForm.invalid">
+            <i class="pi pi-check"></i>
+            <span>Register Cashier</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
+
+<!-- Reset 4-Digit Security PIN Modal -->
+@if (isPinModalOpen()) {
+  <div class="modal-backdrop" (click)="closePinModal()">
+    <div class="modal-dialog glass-panel pin-modal-dialog" (click)="$event.stopPropagation()">
+      <div class="modal-head">
+        <div class="modal-title-row">
+          <i class="pi pi-key"></i>
+          <h3>Set 4-Digit PIN for {{ selectedStaffForPin()?.fullName }}</h3>
+        </div>
+        <button class="close-btn" (click)="closePinModal()">&times;</button>
+      </div>
+
+      <form [formGroup]="pinForm" (ngSubmit)="saveNewPin()" class="modal-body pin-modal-body">
+        <p class="pin-hint">This PIN authorizes register sign-in, price overrides, and sale refunds.</p>
+
+        <div class="pin-display-wrap">
+          <input
+            type="password"
+            maxlength="4"
+            formControlName="pin"
+            placeholder="••••"
+            class="pin-screen-input"
+            autofocus
+          />
+        </div>
+
+        <div class="modal-foot">
+          <button type="button" class="btn-cancel" (click)="closePinModal()">Cancel</button>
+          <button type="submit" class="btn-save" [disabled]="pinForm.invalid">
+            <i class="pi pi-check"></i>
+            <span>Update PIN</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}

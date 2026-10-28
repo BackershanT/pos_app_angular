@@ -66,6 +66,30 @@ export const routes: Routes = [
         title: 'Suppliers Directory | AeroPOS UAE',
       },
       {
+        path: 'purchases',
+        loadComponent: () =>
+          import('./features/purchases/purchase-list.component').then(
+            (m) => m.PurchaseListComponent
+          ),
+        title: 'Purchases & GRN | AeroPOS UAE',
+      },
+      {
+        path: 'categories',
+        loadComponent: () =>
+          import('./features/categories/category-list.component').then(
+            (m) => m.CategoryListComponent
+          ),
+        title: 'Category Master | AeroPOS UAE',
+      },
+      {
+        path: 'staff',
+        loadComponent: () =>
+          import('./features/staff/staff-list.component').then(
+            (m) => m.StaffListComponent
+          ),
+        title: 'Staff & Cashier PINs | AeroPOS UAE',
+      },
+      {
         path: 'reports',
         loadComponent: () =>
           import('./features/reports/reports.component').then(

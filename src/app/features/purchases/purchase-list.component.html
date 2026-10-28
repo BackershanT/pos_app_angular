@@ -1,0 +1,325 @@
+<div class="feature-page">
+  <!-- Page Header -->
+  <div class="page-header">
+    <div>
+      <h2>Purchases & Goods Received Notes (GRN)</h2>
+      <p class="page-subtitle">Manage supplier purchase orders, vendor invoices, and automated stock replenishment</p>
+    </div>
+    <button class="btn-primary" (click)="openCreateModal()">
+      <i class="pi pi-plus"></i>
+      <span>Create Purchase Order</span>
+    </button>
+  </div>
+
+  <!-- Search & Status Filter Toolbar -->
+  <div class="toolbar-card glass-panel">
+    <div class="search-input-wrap">
+      <i class="pi pi-search"></i>
+      <input
+        type="text"
+        placeholder="Filter by PO #, Supplier, or Notes..."
+        [value]="searchQuery()"
+        (input)="onSearch($event)"
+      />
+    </div>
+
+    <div class="status-filters">
+      @for (st of ['all', 'draft', 'ordered', 'received', 'paid']; track st) {
+        <button
+          class="filter-chip"
+          [class.active]="selectedStatus() === st"
+          (click)="onStatusSelect(st)"
+        >
+          {{ st === 'all' ? 'All Orders' : (st | titlecase) }}
+        </button>
+      }
+    </div>
+  </div>
+
+  <!-- Purchase Orders Table -->
+  <div class="table-container glass-panel">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>PO Number</th>
+          <th>Supplier & TRN</th>
+          <th>Order Date</th>
+          <th>Items</th>
+          <th>Subtotal</th>
+          <th>5% VAT</th>
+          <th>Total (AED)</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (po of paginatedOrders(); track po.id) {
+          <tr>
+            <td class="po-number-cell" (click)="viewOrder(po)">
+              <i class="pi pi-file-edit"></i>
+              <span>{{ po.poNumber }}</span>
+            </td>
+            <td>
+              <div class="supplier-info">
+                <strong>{{ po.supplierName }}</strong>
+                <small>TRN: {{ po.supplierTrn }}</small>
+              </div>
+            </td>
+            <td>{{ po.orderDate | dateFormat:'short' }}</td>
+            <td>{{ po.items.length }} line items</td>
+            <td>{{ po.subtotal | currencyFormat }}</td>
+            <td class="tax-cell">{{ po.taxAmount | currencyFormat }}</td>
+            <td class="total-cell">{{ po.totalAmount | currencyFormat }}</td>
+            <td>
+              <span class="status-badge" [class]="'status-' + po.status">
+                @if (po.status === 'received') {
+                  <i class="pi pi-check"></i>
+                }
+                {{ po.status | uppercase }}
+              </span>
+            </td>
+            <td>
+              <div class="action-buttons">
+                @if (po.status === 'ordered') {
+                  <button
+                    class="btn-grn-receive"
+                    (click)="receiveGoods(po)"
+                    title="Acknowledge delivery and restock inventory"
+                  >
+                    <i class="pi pi-box"></i>
+                    <span>Receive (GRN)</span>
+                  </button>
+                }
+                <button class="btn-inspect" (click)="viewOrder(po)" title="View PO Details">
+                  <i class="pi pi-eye"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="9" class="empty-cell">
+              <i class="pi pi-inbox"></i>
+              <p>No purchase orders found matching your search</p>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  @if (totalRecords() > pageSize()) {
+    <app-pagination
+      [totalRecords]="totalRecords()"
+      [pageSize]="pageSize()"
+      [currentPage]="currentPage()"
+      (pageChange)="currentPage.set($event)"
+    />
+  }
+</div>
+
+<!-- Create Purchase Order Modal -->
+@if (isCreateModalOpen()) {
+  <div class="modal-backdrop" (click)="closeCreateModal()">
+    <div class="modal-dialog glass-panel" (click)="$event.stopPropagation()">
+      <div class="modal-head">
+        <div class="modal-title-row">
+          <i class="pi pi-shopping-bag"></i>
+          <h3>Create Supplier Purchase Order</h3>
+        </div>
+        <button class="close-btn" (click)="closeCreateModal()">&times;</button>
+      </div>
+
+      <form [formGroup]="poForm" class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Vendor / Supplier *</label>
+            <select formControlName="supplierId" class="form-select">
+              @for (sup of suppliers; track sup.id) {
+                <option [value]="sup.id">{{ sup.name }} (TRN: {{ sup.trn }})</option>
+              }
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Expected Delivery Date *</label>
+            <input type="date" formControlName="expectedDate" class="form-input" />
+          </div>
+        </div>
+
+        <!-- Add Items Sub-Form -->
+        <div class="item-builder-card">
+          <h4>Add Line Items to Order</h4>
+          <div class="builder-inputs">
+            <div class="builder-field grow">
+              <label>Product</label>
+              <select formControlName="selectedProductId" class="form-select" (change)="onProductSelect($event)">
+                @for (p of availableProducts; track p.id) {
+                  <option [value]="p.id">{{ p.name }} ({{ p.sku }}) — {{ p.cost | currencyFormat }}</option>
+                }
+              </select>
+            </div>
+            <div class="builder-field narrow">
+              <label>Quantity</label>
+              <input type="number" formControlName="quantity" min="1" class="form-input" />
+            </div>
+            <div class="builder-field narrow">
+              <label>Cost (AED)</label>
+              <input type="number" formControlName="unitCost" step="0.5" class="form-input" />
+            </div>
+            <button type="button" class="btn-add-line" (click)="addItemToModal()">
+              <i class="pi pi-plus"></i>
+              <span>Add</span>
+            </button>
+          </div>
+
+          <!-- Items Table inside Modal -->
+          <div class="po-items-table-wrap">
+            <table class="modal-items-table">
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th>SKU</th>
+                  <th>Qty</th>
+                  <th>Unit Cost</th>
+                  <th>Total</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of modalItems(); track $index) {
+                  <tr>
+                    <td>{{ item.productName }}</td>
+                    <td><small>{{ item.sku }}</small></td>
+                    <td><strong>{{ item.quantityOrdered }}</strong></td>
+                    <td>{{ item.unitCost | currencyFormat }}</td>
+                    <td class="bold-cost">{{ item.totalCost | currencyFormat }}</td>
+                    <td>
+                      <button type="button" class="btn-remove-item" (click)="removeItemFromModal($index)">
+                        <i class="pi pi-trash"></i>
+                      </button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Order Notes / Delivery Instructions</label>
+          <input type="text" formControlName="notes" placeholder="e.g. Deliver before 10 AM to loading dock" class="form-input" />
+        </div>
+
+        <!-- Total Summary Bar -->
+        <div class="po-calculation-summary">
+          <div class="sum-row">
+            <span>Subtotal (Net):</span>
+            <strong>{{ modalTotals().subtotal | currencyFormat }}</strong>
+          </div>
+          <div class="sum-row">
+            <span>UAE VAT (5%):</span>
+            <strong class="vat-val">{{ modalTotals().taxAmount | currencyFormat }}</strong>
+          </div>
+          <div class="sum-row total-row">
+            <span>Total Payable:</span>
+            <strong class="grand-total">{{ modalTotals().totalAmount | currencyFormat }}</strong>
+          </div>
+        </div>
+
+        <div class="modal-foot">
+          <button type="button" class="btn-cancel" (click)="closeCreateModal()">Cancel</button>
+          <button type="button" class="btn-secondary" (click)="savePurchaseOrder(false)" [disabled]="modalItems().length === 0">
+            Save as Draft
+          </button>
+          <button type="button" class="btn-save" (click)="savePurchaseOrder(true)" [disabled]="modalItems().length === 0">
+            <i class="pi pi-send"></i>
+            <span>Confirm & Issue Order</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
+
+<!-- Inspect Purchase Order Modal -->
+@if (selectedPoForView()) {
+  <div class="modal-backdrop" (click)="closeViewModal()">
+    <div class="modal-dialog glass-panel" (click)="$event.stopPropagation()">
+      <div class="modal-head">
+        <div class="modal-title-row">
+          <i class="pi pi-file"></i>
+          <h3>Purchase Order #{{ selectedPoForView()?.poNumber }}</h3>
+        </div>
+        <button class="close-btn" (click)="closeViewModal()">&times;</button>
+      </div>
+
+      <div class="modal-body view-po-body">
+        <div class="po-meta-banner">
+          <div>
+            <strong>{{ selectedPoForView()?.supplierName }}</strong>
+            <p>TRN: {{ selectedPoForView()?.supplierTrn }}</p>
+          </div>
+          <div class="meta-right">
+            <span class="status-badge" [class]="'status-' + selectedPoForView()?.status">
+              {{ selectedPoForView()?.status | uppercase }}
+            </span>
+            <small>Ordered: {{ selectedPoForView()?.orderDate | dateFormat:'short' }}</small>
+          </div>
+        </div>
+
+        <table class="modal-items-table">
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>SKU</th>
+              <th>Quantity</th>
+              <th>Unit Cost</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (line of selectedPoForView()?.items; track line.productId) {
+              <tr>
+                <td>{{ line.productName }}</td>
+                <td>{{ line.sku }}</td>
+                <td><strong>{{ line.quantityOrdered }}</strong></td>
+                <td>{{ line.unitCost | currencyFormat }}</td>
+                <td>{{ line.totalCost | currencyFormat }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+
+        <div class="po-calculation-summary">
+          <div class="sum-row">
+            <span>Subtotal:</span>
+            <span>{{ selectedPoForView()?.subtotal | currencyFormat }}</span>
+          </div>
+          <div class="sum-row">
+            <span>UAE 5% VAT:</span>
+            <span>{{ selectedPoForView()?.taxAmount | currencyFormat }}</span>
+          </div>
+          <div class="sum-row total-row">
+            <span>Grand Total:</span>
+            <span class="grand-total">{{ selectedPoForView()?.totalAmount | currencyFormat }}</span>
+          </div>
+        </div>
+
+        <div class="modal-foot">
+          @if (selectedPoForView()?.status === 'ordered') {
+            <button
+              type="button"
+              class="btn-grn-receive"
+              (click)="receiveGoods(selectedPoForView()!); closeViewModal()"
+            >
+              <i class="pi pi-box"></i>
+              <span>Receive Goods (GRN Restock)</span>
+            </button>
+          }
+          <button type="button" class="btn-cancel" (click)="closeViewModal()">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+}

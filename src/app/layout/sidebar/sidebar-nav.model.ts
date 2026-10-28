@@ -119,6 +119,14 @@ export const DEFAULT_SIDEBAR_NAV_SECTIONS: SidebarNavSection[] = [
         permission: 'inventory:view',
       },
       {
+        id: 'categories',
+        label: 'Category Master',
+        arabicLabel: 'إدارة الفئات',
+        icon: 'pi pi-tag',
+        route: '/categories',
+        permission: 'inventory:view',
+      },
+      {
         id: 'inventory',
         label: 'Stock & Inventory',
         arabicLabel: 'حركات المخزون',
@@ -126,6 +134,14 @@ export const DEFAULT_SIDEBAR_NAV_SECTIONS: SidebarNavSection[] = [
         route: '/inventory',
         badge: { text: 'Audit', variant: 'warning' },
         permission: 'inventory:view',
+      },
+      {
+        id: 'purchases',
+        label: 'Purchases & GRN',
+        arabicLabel: 'أوامر الشراء والتوريد',
+        icon: 'pi pi-shopping-bag',
+        route: '/purchases',
+        badge: { text: 'GRN', variant: 'primary' },
       },
       {
         id: 'suppliers',
@@ -173,8 +189,16 @@ export const DEFAULT_SIDEBAR_NAV_SECTIONS: SidebarNavSection[] = [
   },
   {
     id: 'system',
-    sectionTitle: 'SYSTEM CONFIGURATION',
+    sectionTitle: 'SYSTEM & TEAM',
     items: [
+      {
+        id: 'staff',
+        label: 'Staff & Cashier PINs',
+        arabicLabel: 'فريق العمل ونقاط الدخول',
+        icon: 'pi pi-id-card',
+        route: '/staff',
+        permission: 'system:manage',
+      },
       {
         id: 'settings',
         label: 'Store Settings',

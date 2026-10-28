@@ -1,0 +1,183 @@
+<div class="feature-page">
+  <!-- Page Header -->
+  <div class="page-header">
+    <div>
+      <h2>Category Master Management</h2>
+      <p class="page-subtitle">Organize product catalog, configure POS register quick-filter tabs, icons, and theme badges</p>
+    </div>
+    <button class="btn-primary" (click)="openAddModal()">
+      <i class="pi pi-plus"></i>
+      <span>Add New Category</span>
+    </button>
+  </div>
+
+  <!-- Search Toolbar -->
+  <div class="toolbar-card glass-panel">
+    <div class="search-input-wrap">
+      <i class="pi pi-search"></i>
+      <input
+        type="text"
+        placeholder="Filter categories by name or code..."
+        [value]="searchQuery()"
+        (input)="onSearch($event)"
+      />
+    </div>
+    <div class="category-meta-count">
+      <span>Total Categories: <strong>{{ totalRecords() }}</strong></span>
+    </div>
+  </div>
+
+  <!-- Categories Grid -->
+  <div class="categories-grid">
+    @for (cat of paginatedCategories(); track cat.id) {
+      <div class="cat-card glass-panel" [style.border-top-color]="cat.color">
+        <div class="cat-card-header">
+          <div class="cat-icon-avatar" [style.background]="cat.color + '22'" [style.color]="cat.color">
+            <i [class]="cat.icon"></i>
+          </div>
+          <div class="cat-card-title-group">
+            <h3>{{ cat.name }}</h3>
+            <span class="cat-code">{{ cat.code }}</span>
+          </div>
+          <button
+            class="status-toggle-pill"
+            [class.active]="cat.isActive"
+            (click)="toggleActive(cat)"
+            [title]="cat.isActive ? 'Active on POS Register' : 'Inactive'"
+          >
+            <span class="status-dot"></span>
+            <span>{{ cat.isActive ? 'Active' : 'Disabled' }}</span>
+          </button>
+        </div>
+
+        <p class="cat-desc">{{ cat.description || 'No description provided' }}</p>
+
+        <div class="cat-card-footer">
+          <div class="products-count-badge">
+            <i class="pi pi-box"></i>
+            <span>{{ cat.productCount }} Products Linked</span>
+          </div>
+          <div class="cat-actions">
+            <button class="action-btn" (click)="openAddModal(cat)" title="Edit Category">
+              <i class="pi pi-pencil"></i>
+            </button>
+            <button class="action-btn delete" (click)="deleteCategory(cat)" title="Delete Category">
+              <i class="pi pi-trash"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    } @empty {
+      <div class="empty-state-card glass-panel">
+        <i class="pi pi-tags"></i>
+        <p>No categories found matching your query</p>
+      </div>
+    }
+  </div>
+
+  <!-- Pagination -->
+  @if (totalRecords() > pageSize()) {
+    <app-pagination
+      [totalRecords]="totalRecords()"
+      [pageSize]="pageSize()"
+      [currentPage]="currentPage()"
+      (pageChange)="currentPage.set($event)"
+    />
+  }
+</div>
+
+<!-- Add / Edit Category Modal -->
+@if (isAddModalOpen()) {
+  <div class="modal-backdrop" (click)="closeModal()">
+    <div class="modal-dialog glass-panel" (click)="$event.stopPropagation()">
+      <div class="modal-head">
+        <div class="modal-title-row">
+          <i class="pi pi-tag"></i>
+          <h3>{{ editingCategory() ? 'Edit Category' : 'Create New Category' }}</h3>
+        </div>
+        <button class="close-btn" (click)="closeModal()">&times;</button>
+      </div>
+
+      <form [formGroup]="categoryForm" (ngSubmit)="saveCategory()" class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Category Name *</label>
+            <input
+              type="text"
+              formControlName="name"
+              placeholder="e.g. Cold Brew & Teas"
+              class="form-input"
+              (input)="onNameChange($event)"
+            />
+          </div>
+          <div class="form-group">
+            <label>System Code / Slug *</label>
+            <input type="text" formControlName="code" placeholder="e.g. cold-brew-teas" class="form-input" />
+          </div>
+        </div>
+
+        <!-- Color Palette Picker -->
+        <div class="form-group">
+          <label>Badge Color Accent *</label>
+          <div class="color-picker-row">
+            @for (c of colorPalette; track c) {
+              <button
+                type="button"
+                class="color-swatch"
+                [style.background]="c"
+                [class.selected]="categoryForm.get('color')?.value === c"
+                (click)="categoryForm.patchValue({ color: c })"
+              >
+                @if (categoryForm.get('color')?.value === c) {
+                  <i class="pi pi-check"></i>
+                }
+              </button>
+            }
+          </div>
+        </div>
+
+        <!-- Icon Picker -->
+        <div class="form-group">
+          <label>Category Icon *</label>
+          <div class="icon-picker-row">
+            @for (ico of iconChoices; track ico) {
+              <button
+                type="button"
+                class="icon-swatch"
+                [class.selected]="categoryForm.get('icon')?.value === ico"
+                (click)="categoryForm.patchValue({ icon: ico })"
+              >
+                <i [class]="ico"></i>
+              </button>
+            }
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Description (Optional)</label>
+          <input
+            type="text"
+            formControlName="description"
+            placeholder="Brief operational notes for register staff"
+            class="form-input"
+          />
+        </div>
+
+        <div class="form-group checkbox-row">
+          <label class="switch-label">
+            <input type="checkbox" formControlName="isActive" />
+            <span>Enable in POS Register Quick-Tabs</span>
+          </label>
+        </div>
+
+        <div class="modal-foot">
+          <button type="button" class="btn-cancel" (click)="closeModal()">Cancel</button>
+          <button type="submit" class="btn-save" [disabled]="categoryForm.invalid">
+            <i class="pi pi-check"></i>
+            <span>{{ editingCategory() ? 'Save Changes' : 'Create Category' }}</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
