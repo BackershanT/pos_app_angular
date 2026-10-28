@@ -82,69 +82,7 @@ export class CategoryListComponent implements OnInit {
     'pi pi-th-large',
   ];
 
-  // Category Database
-  categories = signal<CategoryItem[]>([
-    {
-      id: 'cat-1',
-      name: 'Coffee & Drinks',
-      code: 'coffee',
-      icon: 'pi pi-coffee',
-      color: '#3b82f6',
-      description: 'Single origin espresso, iced lattes, batch brew, and teas',
-      productCount: 14,
-      isActive: true,
-    },
-    {
-      id: 'cat-2',
-      name: 'Bakery & Pastry',
-      code: 'bakery',
-      icon: 'pi pi-shopping-bag',
-      color: '#f59e0b',
-      description: 'French butter croissants, chocolate babka, sourdough loaves',
-      productCount: 9,
-      isActive: true,
-    },
-    {
-      id: 'cat-3',
-      name: 'Sandwiches & Savory',
-      code: 'sandwiches',
-      icon: 'pi pi-box',
-      color: '#10b981',
-      description: 'Gourmet focaccia, turkey halloumi, and toasted brioche',
-      productCount: 6,
-      isActive: true,
-    },
-    {
-      id: 'cat-4',
-      name: 'Desserts & Sweets',
-      code: 'desserts',
-      icon: 'pi pi-star',
-      color: '#ec4899',
-      description: 'Basque cheesecake, tiramisu pots, pistachio tarts',
-      productCount: 8,
-      isActive: true,
-    },
-    {
-      id: 'cat-5',
-      name: 'Retail Beans & Mugs',
-      code: 'retail',
-      icon: 'pi pi-tag',
-      color: '#8b5cf6',
-      description: 'Packaged 250g coffee beans, drippers, thermal tumblers',
-      productCount: 12,
-      isActive: true,
-    },
-    {
-      id: 'cat-6',
-      name: 'Plant-Based & Dairy Free',
-      code: 'plant-based',
-      icon: 'pi pi-apple',
-      color: '#06b6d4',
-      description: 'Oat, almond, coconut milk alternatives, vegan energy bites',
-      productCount: 5,
-      isActive: true,
-    },
-  ]);
+  categories = signal<CategoryItem[]>([]);
 
   categoryForm = new FormGroup({
     name: new FormControl('', [Validators.required, Validators.minLength(2)]),

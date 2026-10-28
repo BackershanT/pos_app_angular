@@ -99,13 +99,12 @@ export class InventoryRepository extends BaseRepository {
 
     // Also record the movement ledger entry
     await this.recordMovement({
-      business_id: 'default-business',
+      business_id: 'b0000000-0000-0000-0000-000000000001',
       store_id: storeId,
       product_id: productId,
       quantity_delta: newQuantity,
       balance_after: newQuantity,
       reason: reason as any,
-      notes: notes ?? 'Manual inventory audit adjustment',
     });
 
     return data as StoreInventory;

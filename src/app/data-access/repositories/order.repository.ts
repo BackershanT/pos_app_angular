@@ -17,7 +17,7 @@ export class OrderRepository extends BaseRepository {
    * Derives prices and taxes from database; verifies stock and records movements.
    */
   async completeSale(request: CompleteSaleRequest): Promise<CompleteSaleResponse> {
-    const { data, error } = await this.supabase.rpc('complete_sale', {
+    const { data, error } = await (this.supabase as any).rpc('complete_sale', {
       p_store_id: request.store_id,
       p_items: request.items as any,
       p_payments: request.payments as any,
@@ -37,7 +37,7 @@ export class OrderRepository extends BaseRepository {
    * Processes a sale refund/reversal and updates restock inventory.
    */
   async processRefund(request: ProcessRefundRequest): Promise<any> {
-    const { data, error } = await this.supabase.rpc('process_sale_refund', {
+    const { data, error } = await (this.supabase as any).rpc('process_sale_refund', {
       p_sale_id: request.sale_id,
       p_items_to_refund: request.items_to_refund as any,
       p_refund_amount: request.refund_amount,

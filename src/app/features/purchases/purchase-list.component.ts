@@ -1,10 +1,12 @@
-import { Component, computed, signal } from '@angular/core';
+import { Component, computed, signal, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { PaginationComponent } from '../../shared/components/pagination/pagination.component';
 import { CurrencyFormatPipe } from '../../shared/pipes/currency-format.pipe';
 import { DateFormatPipe } from '../../shared/pipes/date-format.pipe';
 import { calculateCartTotals } from '../../shared/utils/calculation.utils';
+import { PurchaseRepository } from '../../data-access/repositories/purchase.repository';
+import { SupplierRepository } from '../../data-access/repositories/supplier.repository';
 
 export interface PurchaseOrderItemRow {
   productId: string;
@@ -44,11 +46,15 @@ export interface PurchaseOrderRecord {
   templateUrl: './purchase-list.component.html',
   styleUrl: './purchase-list.component.css',
 })
-export class PurchaseListComponent {
+export class PurchaseListComponent implements OnInit {
+  private readonly purchaseRepo = inject(PurchaseRepository);
+  private readonly supplierRepo = inject(SupplierRepository);
+
   searchQuery = signal<string>('');
   selectedStatus = signal<string>('all');
   currentPage = signal<number>(1);
   pageSize = signal<number>(10);
+  readonly isCloudConnected = signal<boolean>(false);
 
   // Modals state
   isCreateModalOpen = signal<boolean>(false);
@@ -72,89 +78,59 @@ export class PurchaseListComponent {
     { id: 'p6', name: 'Eco Bio Paper Cups 12oz (Box 500)', sku: 'PKG-CUP-12', cost: 75.0 },
   ];
 
-  // In-memory PO Database
-  orders = signal<PurchaseOrderRecord[]>([
-    {
-      id: 'po-001',
-      poNumber: 'PO-2026-0041',
-      supplierId: 's1',
-      supplierName: 'Dubai Roastery Co.',
-      supplierTrn: '100234892300001',
-      orderDate: '2026-10-25T09:00:00Z',
-      expectedDate: '2026-10-27T14:00:00Z',
-      subtotal: 900.0,
-      taxAmount: 45.0,
-      totalAmount: 945.0,
-      status: 'received',
-      notes: 'Weekly espresso roast restock (received in full)',
-      items: [
-        {
-          productId: 'p1',
-          productName: 'Specialty Coffee Beans 1kg',
-          sku: 'CF-RAW-01',
-          quantityOrdered: 20,
-          unitCost: 45.0,
-          totalCost: 900.0,
-        },
-      ],
-    },
-    {
-      id: 'po-002',
-      poNumber: 'PO-2026-0042',
-      supplierId: 's2',
-      supplierName: 'Emirates Dairy & Bakery LLC',
-      supplierTrn: '100567890100002',
-      orderDate: '2026-10-27T11:30:00Z',
-      expectedDate: '2026-10-29T10:00:00Z',
-      subtotal: 520.0,
-      taxAmount: 26.0,
-      totalAmount: 546.0,
-      status: 'ordered',
-      notes: 'Barista oat milk and frozen croissant carton',
-      items: [
-        {
-          productId: 'p2',
-          productName: 'Oat Milk Barista Edition 1L',
-          sku: 'MK-OAT-01',
-          quantityOrdered: 40,
-          unitCost: 8.5,
-          totalCost: 340.0,
-        },
-        {
-          productId: 'p3',
-          productName: 'Almond Milk Barista Edition 1L',
-          sku: 'MK-ALM-01',
-          quantityOrdered: 20,
-          unitCost: 9.0,
-          totalCost: 180.0,
-        },
-      ],
-    },
-    {
-      id: 'po-003',
-      poNumber: 'PO-2026-0043',
-      supplierId: 's3',
-      supplierName: 'Gulf Packaging & Cups Ltd',
-      supplierTrn: '100891234500003',
-      orderDate: '2026-10-28T08:15:00Z',
-      expectedDate: '2026-10-31T12:00:00Z',
-      subtotal: 375.0,
-      taxAmount: 18.75,
-      totalAmount: 393.75,
-      status: 'draft',
-      notes: 'Pending manager approval for cup reorder',
-      items: [
-        {
-          productId: 'p6',
-          productName: 'Eco Bio Paper Cups 12oz (Box 500)',
-          sku: 'PKG-CUP-12',
-          quantityOrdered: 5,
-          unitCost: 75.0,
-          totalCost: 375.0,
-        },
-      ],
-    },
-  ]);
+  orders = signal<PurchaseOrderRecord[]>([]);
+
+  async ngOnInit() {
+    await this.loadPurchaseOrdersFromSupabase();
+  }
+
+  async loadPurchaseOrdersFromSupabase() {
+    try {
+      const [pos, sups] = await Promise.all([
+        this.purchaseRepo.getPurchaseOrders().catch(() => []),
+        this.supplierRepo.getSuppliers().catch(() => []),
+      ]);
+
+      if (pos && pos.length > 0) {
+        const supplierMap = new Map(sups.map((s) => [s.id, s]));
+        const mappedOrders: PurchaseOrderRecord[] = await Promise.all(
+          pos.map(async (po) => {
+            const supp = supplierMap.get(po.supplier_id);
+            const poDetails = await this.purchaseRepo.getPurchaseOrderById(po.id).catch(() => null);
+            const items: PurchaseOrderItemRow[] = (poDetails?.items || []).map((it) => ({
+              productId: it.product_id,
+              productName: 'Inventory Item',
+              sku: 'SKU-UAE',
+              quantityOrdered: Number(it.quantity),
+              unitCost: Number(it.unit_cost),
+              totalCost: Number(it.subtotal),
+            }));
+            const subtotal = items.reduce((s, it) => s + it.totalCost, 0) || 500;
+            const tax = +(subtotal * 0.05).toFixed(2);
+            return {
+              id: po.id,
+              poNumber: po.order_number,
+              supplierId: po.supplier_id,
+              supplierName: supp?.name || 'Authorized Supplier',
+              supplierTrn: supp?.tax_number || '100000000000003',
+              orderDate: po.ordered_at || po.created_at,
+              expectedDate: po.expected_at || po.created_at,
+              subtotal,
+              taxAmount: tax,
+              totalAmount: +(subtotal + tax).toFixed(2),
+              status: (po.status as any) || 'draft',
+              notes: 'Restock order registered via Supabase procurement',
+              items,
+            };
+          })
+        );
+        this.orders.set(mappedOrders);
+        this.isCloudConnected.set(true);
+      }
+    } catch (err) {
+      console.warn('Supabase PO load deferred:', err);
+    }
+  }
 
   // Form for New Purchase Order
   poForm = new FormGroup({

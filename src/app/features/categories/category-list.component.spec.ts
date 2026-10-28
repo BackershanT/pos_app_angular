@@ -1,18 +1,30 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { CategoryListComponent } from './category-list.component';
+import { CategoryRepository } from '../../data-access/repositories/category.repository';
 
 describe('CategoryListComponent', () => {
   let fixture: ComponentFixture<CategoryListComponent>;
   let component: CategoryListComponent;
 
-  beforeEach(() => {
-    TestBed.configureTestingModule({
+  const mockCategoryRepo = {
+    getCategories: vi.fn().mockResolvedValue([
+      { id: 'cat-1', name: 'Coffee & Drinks', description: 'coffee' },
+      { id: 'cat-2', name: 'Bakery & Pastry', description: 'bakery' },
+    ]),
+  };
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
       imports: [CategoryListComponent],
-    });
+      providers: [
+        { provide: CategoryRepository, useValue: mockCategoryRepo },
+      ],
+    }).compileComponents();
 
     fixture = TestBed.createComponent(CategoryListComponent);
     component = fixture.componentInstance;
+    await component.loadCategoriesFromSupabase();
     fixture.detectChanges();
   });
 
@@ -25,7 +37,7 @@ describe('CategoryListComponent', () => {
   it('should filter categories by search term', () => {
     const event = { target: { value: 'coffee' } } as unknown as Event;
     component.onSearch(event);
-    expect(component.filteredCategories().length).toBe(2);
+    expect(component.filteredCategories().length).toBe(1);
     expect(component.filteredCategories()[0].name).toContain('Coffee');
   });
 

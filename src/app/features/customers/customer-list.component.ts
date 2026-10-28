@@ -57,14 +57,7 @@ export class CustomerListComponent implements OnInit {
     }
   }
 
-  customers = signal<CustomerRecord[]>([
-    { id: 'c1', name: 'Ahmed Al-Maktoum', phone: '+971 50 123 4567', email: 'ahmed@example.ae', loyaltyPoints: 420, totalOrders: 18, totalSpent: 1240.0 },
-    { id: 'c2', name: 'Rashid Khan', phone: '+971 52 987 6543', email: 'rashid.k@example.com', loyaltyPoints: 185, totalOrders: 8, totalSpent: 590.0 },
-    { id: 'c3', name: 'Fatima Noor', phone: '+971 55 456 7890', email: 'fatima.n@example.ae', loyaltyPoints: 310, totalOrders: 12, totalSpent: 890.0 },
-    { id: 'c4', name: 'Zayd Al-Nuaimi', phone: '+971 50 789 0123', email: 'zayd@example.ae', loyaltyPoints: 540, totalOrders: 22, totalSpent: 2150.0 },
-    { id: 'c5', name: 'Mariam Al-Zaabi', phone: '+971 56 345 6789', email: 'mariam.z@example.com', loyaltyPoints: 95, totalOrders: 4, totalSpent: 260.0 },
-    { id: 'c6', name: 'Omar Mansoor', phone: '+971 54 234 5678', email: 'omar.m@example.ae', loyaltyPoints: 210, totalOrders: 9, totalSpent: 710.0 },
-  ]);
+  customers = signal<CustomerRecord[]>([]);
 
   customerForm = new FormGroup({
     name: new FormControl('', [Validators.required, Validators.minLength(2)]),

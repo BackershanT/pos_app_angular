@@ -1,17 +1,58 @@
-import { TestBed } from '@angular/core/testing';
-import { describe, it, expect, beforeEach } from 'vitest';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { PurchaseListComponent } from './purchase-list.component';
+import { PurchaseRepository } from '../../data-access/repositories/purchase.repository';
+import { SupplierRepository } from '../../data-access/repositories/supplier.repository';
 
 describe('PurchaseListComponent', () => {
+  let fixture: ComponentFixture<PurchaseListComponent>;
   let component: PurchaseListComponent;
 
-  beforeEach(() => {
-    TestBed.configureTestingModule({
-      imports: [PurchaseListComponent],
-    });
+  const mockPurchaseRepo = {
+    getPurchaseOrders: vi.fn().mockResolvedValue([
+      {
+        id: 'po-001',
+        order_number: 'PO-2026-0041',
+        supplier_id: 's1',
+        status: 'ordered',
+        ordered_at: '2026-10-25T09:00:00Z',
+        expected_at: '2026-10-27T14:00:00Z',
+      },
+    ]),
+    getPurchaseOrderById: vi.fn().mockResolvedValue({
+      id: 'po-001',
+      order_number: 'PO-2026-0041',
+      supplier_id: 's1',
+      status: 'ordered',
+      items: [
+        {
+          product_id: 'p1',
+          quantity: 20,
+          unit_cost: 45.0,
+          subtotal: 900.0,
+        },
+      ],
+    }),
+  };
 
-    const fixture = TestBed.createComponent(PurchaseListComponent);
+  const mockSupplierRepo = {
+    getSuppliers: vi.fn().mockResolvedValue([
+      { id: 's1', name: 'Dubai Roastery Co.', tax_number: '100234892300001' },
+    ]),
+  };
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [PurchaseListComponent],
+      providers: [
+        { provide: PurchaseRepository, useValue: mockPurchaseRepo },
+        { provide: SupplierRepository, useValue: mockSupplierRepo },
+      ],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(PurchaseListComponent);
     component = fixture.componentInstance;
+    await component.loadPurchaseOrdersFromSupabase();
     fixture.detectChanges();
   });
 

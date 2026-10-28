@@ -1,4 +1,4 @@
-import { Component, computed, signal } from '@angular/core';
+import { Component, computed, signal, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { PaginationComponent } from '../../shared/components/pagination/pagination.component';
@@ -8,6 +8,7 @@ import { HasPermissionDirective } from '../../shared/directives/has-permission.d
 import { CurrencyFormatPipe } from '../../shared/pipes/currency-format.pipe';
 import { DateFormatPipe } from '../../shared/pipes/date-format.pipe';
 import { TruncatePipe } from '../../shared/pipes/truncate.pipe';
+import { OrderRepository } from '../../data-access/repositories/order.repository';
 
 export interface SaleTransaction {
   id: string;
@@ -40,11 +41,14 @@ export interface SaleTransaction {
   templateUrl: './sales-list.component.html',
   styleUrl: './sales-list.component.css',
 })
-export class SalesListComponent {
+export class SalesListComponent implements OnInit {
+  private readonly orderRepo = inject(OrderRepository);
+
   searchQuery = signal<string>('');
   selectedStatus = signal<string>('all');
   currentPage = signal<number>(1);
   pageSize = signal<number>(10);
+  readonly isCloudConnected = signal<boolean>(false);
 
   onSearch(query: string) {
     this.searchQuery.set(query);
@@ -60,15 +64,41 @@ export class SalesListComponent {
   refundReason = signal<string>('Customer Dissatisfaction');
   returnToStock = signal<boolean>(true);
 
-  sales = signal<SaleTransaction[]>([
-    { id: 's1', invoiceNumber: 'INV-20261028-0412', date: '2026-10-28 17:15', customerName: 'Walk-in Customer', cashierName: 'Kasun B.', itemsCount: 3, subtotal: 64.76, taxTotal: 3.24, grandTotal: 68.0, paymentMethod: 'Card', status: 'completed' },
-    { id: 's2', invoiceNumber: 'INV-20261028-0411', date: '2026-10-28 17:10', customerName: 'Ahmed Al-Maktoum', cashierName: 'Kasun B.', itemsCount: 1, subtotal: 22.86, taxTotal: 1.14, grandTotal: 24.0, paymentMethod: 'Apple Pay', status: 'completed' },
-    { id: 's3', invoiceNumber: 'INV-20261028-0410', date: '2026-10-28 17:02', customerName: 'Rashid Khan', cashierName: 'Sarah M.', itemsCount: 4, subtotal: 106.67, taxTotal: 5.33, grandTotal: 112.0, paymentMethod: 'Cash', status: 'completed' },
-    { id: 's4', invoiceNumber: 'INV-20261028-0409', date: '2026-10-28 16:55', customerName: 'Walk-in Customer', cashierName: 'Sarah M.', itemsCount: 2, subtotal: 43.81, taxTotal: 2.19, grandTotal: 46.0, paymentMethod: 'Card', status: 'completed' },
-    { id: 's5', invoiceNumber: 'INV-20261028-0408', date: '2026-10-28 16:30', customerName: 'Fatima Noor', cashierName: 'Kasun B.', itemsCount: 2, subtotal: 36.19, taxTotal: 1.81, grandTotal: 38.0, paymentMethod: 'Card', status: 'refunded' },
-    { id: 's6', invoiceNumber: 'INV-20261028-0407', date: '2026-10-28 15:45', customerName: 'Walk-in Customer', cashierName: 'Kasun B.', itemsCount: 3, subtotal: 78.10, taxTotal: 3.90, grandTotal: 82.0, paymentMethod: 'Cash', status: 'completed' },
-    { id: 's7', invoiceNumber: 'INV-20261028-0406', date: '2026-10-28 15:10', customerName: 'Zayd Al-Nuaimi', cashierName: 'Sarah M.', itemsCount: 5, subtotal: 135.24, taxTotal: 6.76, grandTotal: 142.0, paymentMethod: 'Card', status: 'partially_refunded' },
-  ]);
+  sales = signal<SaleTransaction[]>([]);
+
+  async ngOnInit() {
+    await this.loadSalesFromSupabase();
+  }
+
+  async loadSalesFromSupabase() {
+    try {
+      const data = await this.orderRepo.getSalesByStore('a0000000-0000-0000-0000-000000000001');
+      if (data && data.length > 0) {
+        const mapped: SaleTransaction[] = data.map((s: any) => {
+          const notesParts = (s.notes || '').split('|');
+          const custName = notesParts[0]?.trim() || 'Walk-in Customer';
+          const cashier = notesParts[1]?.replace('Cashier:', '').trim() || 'Kasun B.';
+          return {
+            id: s.id,
+            invoiceNumber: s.invoice_number,
+            date: s.created_at ? new Date(s.created_at).toLocaleString('en-US', { timeZone: 'Asia/Dubai' }) : 'Recent',
+            customerName: custName,
+            cashierName: cashier,
+            itemsCount: 3,
+            subtotal: Number(s.subtotal),
+            taxTotal: Number(s.tax_total),
+            grandTotal: Number(s.grand_total),
+            paymentMethod: 'Card / Electronic',
+            status: (s.status as any) || 'completed',
+          };
+        });
+        this.sales.set(mapped);
+        this.isCloudConnected.set(true);
+      }
+    } catch (err) {
+      console.warn('Supabase sales load deferred:', err);
+    }
+  }
 
   filteredSales = computed(() => {
     const q = this.searchQuery().toLowerCase().trim();

@@ -68,7 +68,11 @@ export class InventoryListComponent implements OnInit {
 
   async loadInventoryFromSupabase() {
     try {
-      const data = await this.productRepo.getProductsWithInventory();
+      const [data, movementsData] = await Promise.all([
+        this.productRepo.getProductsWithInventory(),
+        this.inventoryRepo.getStockMovements().catch(() => []),
+      ]);
+
       if (data && data.length > 0) {
         const mapped: InventoryItem[] = data.map((p) => {
           const qty = p.quantity_on_hand != null ? Number(p.quantity_on_hand) : 25;
@@ -86,6 +90,25 @@ export class InventoryListComponent implements OnInit {
         });
         this.inventory.set(mapped);
         this.isCloudConnected.set(true);
+
+        if (movementsData && movementsData.length > 0) {
+          const productMap = new Map(data.map((p) => [p.id, p]));
+          const mappedMovements: StockMovementRecord[] = movementsData.map((m) => {
+            const prod = productMap.get(m.product_id);
+            return {
+              id: m.id,
+              timestamp: m.created_at ? new Date(m.created_at).toLocaleString('en-US', { timeZone: 'Asia/Dubai' }) : 'Recent',
+              sku: prod?.sku || 'SKU-UAE',
+              productName: prod?.name || 'Catalog Item',
+              quantityDelta: Number(m.quantity_delta),
+              balanceAfter: Number(m.balance_after),
+              reason: (m.reason as any) || 'adjustment',
+              performedBy: 'Store Supervisor',
+              notes: `Supabase verified stock ledger`,
+            };
+          });
+          this.movements.set(mappedMovements);
+        }
       }
     } catch (err) {
       console.warn('Supabase inventory load deferred:', err);
@@ -114,25 +137,8 @@ export class InventoryListComponent implements OnInit {
   adjustmentReason = signal<'adjustment' | 'damage' | 'purchase' | 'refund'>('adjustment');
   adjustmentNotes = signal<string>('');
 
-  inventory = signal<InventoryItem[]>([
-    { id: '1', sku: 'CF-001', productName: 'Spanish Latte (Iced)', category: 'Beverages', quantityOnHand: 45, reorderLevel: 20, unitCost: 8.5, totalCostValuation: 382.5 },
-    { id: '2', sku: 'CF-002', productName: 'Caramel Macchiato', category: 'Beverages', quantityOnHand: 38, reorderLevel: 15, unitCost: 7.0, totalCostValuation: 266.0 },
-    { id: '3', sku: 'CF-003', productName: 'Matcha Green Tea', category: 'Beverages', quantityOnHand: 29, reorderLevel: 15, unitCost: 9.0, totalCostValuation: 261.0 },
-    { id: '4', sku: 'BK-001', productName: 'Butter Croissant', category: 'Bakery', quantityOnHand: 8, reorderLevel: 15, unitCost: 4.5, totalCostValuation: 36.0 },
-    { id: '5', sku: 'BK-002', productName: 'Chocolate Pain Au', category: 'Bakery', quantityOnHand: 5, reorderLevel: 15, unitCost: 5.5, totalCostValuation: 27.5 },
-    { id: '6', sku: 'BK-003', productName: 'Artisan Sourdough', category: 'Bakery', quantityOnHand: 12, reorderLevel: 10, unitCost: 9.0, totalCostValuation: 108.0 },
-    { id: '7', sku: 'SW-001', productName: 'Truffle Chicken Panini', category: 'Main Meals', quantityOnHand: 18, reorderLevel: 10, unitCost: 14.0, totalCostValuation: 252.0 },
-    { id: '8', sku: 'SW-002', productName: 'Smoked Salmon Bagel', category: 'Main Meals', quantityOnHand: 4, reorderLevel: 10, unitCost: 16.5, totalCostValuation: 66.0 },
-    { id: '9', sku: 'DS-001', productName: 'San Sebastian Cheesecake', category: 'Desserts', quantityOnHand: 22, reorderLevel: 12, unitCost: 11.0, totalCostValuation: 242.0 },
-    { id: '10', sku: 'DS-002', productName: 'Pistachio Kunafa Cup', category: 'Desserts', quantityOnHand: 19, reorderLevel: 12, unitCost: 10.0, totalCostValuation: 190.0 },
-  ]);
-
-  movements = signal<StockMovementRecord[]>([
-    { id: 'm1', timestamp: '2026-10-28 17:15', sku: 'CF-001', productName: 'Spanish Latte (Iced)', quantityDelta: -1, balanceAfter: 45, reason: 'sale', performedBy: 'Kasun B.', notes: 'Checkout INV-20261028-0412' },
-    { id: 'm2', timestamp: '2026-10-28 17:10', sku: 'BK-001', productName: 'Butter Croissant', quantityDelta: -2, balanceAfter: 8, reason: 'sale', performedBy: 'Kasun B.', notes: 'Checkout INV-20261028-0411' },
-    { id: 'm3', timestamp: '2026-10-28 15:30', sku: 'BK-002', productName: 'Chocolate Pain Au', quantityDelta: -3, balanceAfter: 5, reason: 'damage', performedBy: 'Manager Sarah', notes: 'Expired shelf life write-off' },
-    { id: 'm4', timestamp: '2026-10-28 09:00', sku: 'CF-001', productName: 'Spanish Latte (Iced)', quantityDelta: +50, balanceAfter: 46, reason: 'purchase', performedBy: 'Inventory Clerk', notes: 'PO-2026-081 Receiving' },
-  ]);
+  inventory = signal<InventoryItem[]>([]);
+  movements = signal<StockMovementRecord[]>([]);
 
   filteredInventory = computed(() => {
     const q = this.searchQuery().toLowerCase().trim();

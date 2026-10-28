@@ -40,7 +40,7 @@
     </div>
 
     <div class="dash-products-grid">
-      @for (prod of fastMovingProducts; track prod.id) {
+      @for (prod of fastMovingProducts(); track prod.id) {
         <app-product-card
           [product]="prod"
           mode="compact"
@@ -71,7 +71,7 @@
         </tr>
       </thead>
       <tbody>
-        @for (sale of recentSales; track sale.invoice) {
+        @for (sale of recentSales(); track sale.invoice) {
           <tr>
             <td class="inv-cell">{{ sale.invoice }}</td>
             <td>{{ sale.cashier }}</td>

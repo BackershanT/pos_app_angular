@@ -1,7 +1,8 @@
-import { Component, computed, signal } from '@angular/core';
+import { Component, computed, signal, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { PaginationComponent } from '../../shared/components/pagination/pagination.component';
+import { SupplierRepository } from '../../data-access/repositories/supplier.repository';
 
 export interface SupplierRecord {
   id: string;
@@ -20,18 +21,44 @@ export interface SupplierRecord {
   templateUrl: './supplier-list.component.html',
   styleUrl: './supplier-list.component.css',
 })
-export class SupplierListComponent {
+export class SupplierListComponent implements OnInit {
+  private readonly supplierRepo = inject(SupplierRepository);
+
   searchQuery = signal<string>('');
   currentPage = signal<number>(1);
   pageSize = signal<number>(10);
   isAddModalOpen = signal<boolean>(false);
+  readonly isCloudConnected = signal<boolean>(false);
 
-  suppliers = signal<SupplierRecord[]>([
-    { id: 'sp1', name: 'Al-Ain Dairy Farms LLC', contactPerson: 'Khaled Saeed', phone: '+971 3 700 1122', email: 'orders@alaindairy.ae', taxNumber: '100456789000003', activeOrders: 2 },
-    { id: 'sp2', name: 'Gulf Specialty Coffee Roasters', contactPerson: 'Hamad Mansoori', phone: '+971 4 340 5566', email: 'sales@gulfcoffee.ae', taxNumber: '100892345600003', activeOrders: 1 },
-    { id: 'sp3', name: 'Emirates Bakery Supplies', contactPerson: 'David Miller', phone: '+971 4 285 9900', email: 'david@ebs.ae', taxNumber: '100123987400003', activeOrders: 0 },
-    { id: 'sp4', name: 'Fresh Greens Wholesale LLC', contactPerson: 'Tariq Aziz', phone: '+971 6 543 2100', email: 'supply@freshgreens.ae', taxNumber: '100654321900003', activeOrders: 3 },
-  ]);
+  suppliers = signal<SupplierRecord[]>([]);
+
+  async ngOnInit() {
+    await this.loadSuppliersFromSupabase();
+  }
+
+  async loadSuppliersFromSupabase() {
+    try {
+      const data = await this.supplierRepo.getSuppliers();
+      if (data && data.length > 0) {
+        const mapped: SupplierRecord[] = data.map((s) => {
+          const details = (s.contact_details as any) || {};
+          return {
+            id: s.id,
+            name: s.name,
+            contactPerson: details.contactPerson || details.contact_person || 'Procurement Rep',
+            phone: details.phone || '+971 4 000 0000',
+            email: details.email || 'vendor@example.ae',
+            taxNumber: s.tax_number || '100000000000003',
+            activeOrders: details.activeOrders ?? 0,
+          };
+        });
+        this.suppliers.set(mapped);
+        this.isCloudConnected.set(true);
+      }
+    } catch (err) {
+      console.warn('Supabase supplier load deferred:', err);
+    }
+  }
 
   supplierForm = new FormGroup({
     name: new FormControl('', [Validators.required]),
@@ -64,7 +91,7 @@ export class SupplierListComponent {
     this.isAddModalOpen.set(false);
   }
 
-  saveSupplier() {
+  async saveSupplier() {
     if (this.supplierForm.invalid) return;
 
     const val = this.supplierForm.value;
@@ -80,5 +107,21 @@ export class SupplierListComponent {
 
     this.suppliers.update((list) => [newSupplier, ...list]);
     this.closeAddModal();
+
+    try {
+      await this.supplierRepo.createSupplier({
+        business_id: 'b0000000-0000-0000-0000-000000000001',
+        name: val.name!,
+        tax_number: val.taxNumber!,
+        contact_details: {
+          contactPerson: val.contactPerson,
+          phone: val.phone,
+          email: val.email,
+          activeOrders: 0,
+        },
+      });
+    } catch (err) {
+      console.warn('Supplier Supabase persist deferred:', err);
+    }
   }
 }
