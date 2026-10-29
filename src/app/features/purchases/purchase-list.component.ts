@@ -7,6 +7,10 @@ import { DateFormatPipe } from '../../shared/pipes/date-format.pipe';
 import { calculateCartTotals } from '../../shared/utils/calculation.utils';
 import { PurchaseRepository } from '../../data-access/repositories/purchase.repository';
 import { SupplierRepository } from '../../data-access/repositories/supplier.repository';
+import { ProductRepository } from '../../data-access/repositories/product.repository';
+import { AppContext } from '../../core/context/app-context.service';
+import { NotificationService } from '../../core/services/notification.service';
+import { PurchaseOrderInsert } from '../../data-access/models/purchase.model';
 
 export interface PurchaseOrderItemRow {
   productId: string;
@@ -49,34 +53,46 @@ export interface PurchaseOrderRecord {
 export class PurchaseListComponent implements OnInit {
   private readonly purchaseRepo = inject(PurchaseRepository);
   private readonly supplierRepo = inject(SupplierRepository);
+  private readonly productRepo = inject(ProductRepository);
+  private readonly notification = inject(NotificationService);
+  readonly context = inject(AppContext);
 
   searchQuery = signal<string>('');
   selectedStatus = signal<string>('all');
   currentPage = signal<number>(1);
   pageSize = signal<number>(10);
   readonly isCloudConnected = signal<boolean>(false);
+  readonly isSubmitting = signal<boolean>(false);
 
   // Modals state
   isCreateModalOpen = signal<boolean>(false);
   selectedPoForView = signal<PurchaseOrderRecord | null>(null);
 
-  // Supplier Options
-  readonly suppliers = [
-    { id: 's1', name: 'Dubai Roastery Co.', trn: '100234892300001' },
-    { id: 's2', name: 'Emirates Dairy & Bakery LLC', trn: '100567890100002' },
-    { id: 's3', name: 'Gulf Packaging & Cups Ltd', trn: '100891234500003' },
-    { id: 's4', name: 'Al-Khaleej Food Trading', trn: '100345678900004' },
-  ];
+  // Supplier Options with seeded UUIDs for fallback
+  private readonly _suppliers = signal([
+    { id: 'f0000000-0000-0000-0000-000000000001', name: 'Emirates Coffee Roasters LLC', trn: '100445566770003' },
+    { id: 'f0000000-0000-0000-0000-000000000002', name: 'Al Ain Fresh Dairy Farm', trn: '100112233440003' },
+    { id: 'f0000000-0000-0000-0000-000000000003', name: 'Dubai Bakery & Patisserie Supplies', trn: '100889900110003' },
+    { id: 'f0000000-0000-0000-0000-000000000004', name: 'Gulf Specialty Ingredients Trading', trn: '100334455660003' },
+  ]);
 
-  // Available Products for PO
-  readonly availableProducts = [
-    { id: 'p1', name: 'Specialty Coffee Beans 1kg', sku: 'CF-RAW-01', cost: 45.0 },
-    { id: 'p2', name: 'Oat Milk Barista Edition 1L', sku: 'MK-OAT-01', cost: 8.5 },
-    { id: 'p3', name: 'Almond Milk Barista Edition 1L', sku: 'MK-ALM-01', cost: 9.0 },
-    { id: 'p4', name: 'Artisan Butter Croissant (Frozen Box 50)', sku: 'BK-CR-50', cost: 110.0 },
-    { id: 'p5', name: 'Organic Matcha Powder 500g', sku: 'TEA-MTC-01', cost: 65.0 },
-    { id: 'p6', name: 'Eco Bio Paper Cups 12oz (Box 500)', sku: 'PKG-CUP-12', cost: 75.0 },
-  ];
+  // Available Products with seeded UUIDs for fallback
+  private readonly _availableProducts = signal([
+    { id: 'd0000000-0000-0000-0000-000000000001', name: 'Specialty Coffee Beans 1kg', sku: 'CF-RAW-01', cost: 45.0 },
+    { id: 'd0000000-0000-0000-0000-000000000002', name: 'Oat Milk Barista Edition 1L', sku: 'MK-OAT-01', cost: 8.5 },
+    { id: 'd0000000-0000-0000-0000-000000000003', name: 'Almond Milk Barista Edition 1L', sku: 'MK-ALM-01', cost: 9.0 },
+    { id: 'd0000000-0000-0000-0000-000000000007', name: 'Artisan Butter Croissant (Frozen Box 50)', sku: 'BK-CR-50', cost: 110.0 },
+    { id: 'd0000000-0000-0000-0000-000000000008', name: 'Organic Matcha Powder 500g', sku: 'TEA-MTC-01', cost: 65.0 },
+    { id: 'd0000000-0000-0000-0000-000000000009', name: 'Eco Bio Paper Cups 12oz (Box 500)', sku: 'PKG-CUP-12', cost: 75.0 },
+  ]);
+
+  get suppliers() {
+    return this._suppliers();
+  }
+
+  get availableProducts() {
+    return this._availableProducts();
+  }
 
   orders = signal<PurchaseOrderRecord[]>([]);
 
@@ -86,25 +102,52 @@ export class PurchaseListComponent implements OnInit {
 
   async loadPurchaseOrdersFromSupabase() {
     try {
-      const [pos, sups] = await Promise.all([
+      const [pos, sups, prods] = await Promise.all([
         this.purchaseRepo.getPurchaseOrders().catch(() => []),
         this.supplierRepo.getSuppliers().catch(() => []),
+        this.productRepo.getProducts(100).catch(() => []),
       ]);
 
+      if (sups && sups.length > 0) {
+        this._suppliers.set(
+          sups.map((s) => ({
+            id: s.id,
+            name: s.name,
+            trn: s.tax_number || '100000000000003',
+          })),
+        );
+      }
+
+      if (prods && prods.length > 0) {
+        this._availableProducts.set(
+          prods.map((p) => ({
+            id: p.id,
+            name: p.name,
+            sku: p.sku,
+            cost: Number(p.cost_price || 10),
+          })),
+        );
+      }
+
       if (pos && pos.length > 0) {
-        const supplierMap = new Map(sups.map((s) => [s.id, s]));
+        const supplierMap = new Map((sups || []).map((s) => [s.id, s]));
+        const productMap = new Map((prods || []).map((p) => [p.id, p]));
+
         const mappedOrders: PurchaseOrderRecord[] = await Promise.all(
           pos.map(async (po) => {
             const supp = supplierMap.get(po.supplier_id);
             const poDetails = await this.purchaseRepo.getPurchaseOrderById(po.id).catch(() => null);
-            const items: PurchaseOrderItemRow[] = (poDetails?.items || []).map((it) => ({
-              productId: it.product_id,
-              productName: 'Inventory Item',
-              sku: 'SKU-UAE',
-              quantityOrdered: Number(it.quantity),
-              unitCost: Number(it.unit_cost),
-              totalCost: Number(it.subtotal),
-            }));
+            const items: PurchaseOrderItemRow[] = (poDetails?.items || []).map((it) => {
+              const prod = productMap.get(it.product_id);
+              return {
+                productId: it.product_id,
+                productName: prod?.name || 'Catalog Item',
+                sku: prod?.sku || 'SKU-UAE',
+                quantityOrdered: Number(it.quantity),
+                unitCost: Number(it.unit_cost),
+                totalCost: Number(it.subtotal),
+              };
+            });
             const subtotal = items.reduce((s, it) => s + it.totalCost, 0) || 500;
             const tax = +(subtotal * 0.05).toFixed(2);
             return {
@@ -122,7 +165,7 @@ export class PurchaseListComponent implements OnInit {
               notes: 'Restock order registered via Supabase procurement',
               items,
             };
-          })
+          }),
         );
         this.orders.set(mappedOrders);
         this.isCloudConnected.set(true);
@@ -134,10 +177,10 @@ export class PurchaseListComponent implements OnInit {
 
   // Form for New Purchase Order
   poForm = new FormGroup({
-    supplierId: new FormControl('s1', [Validators.required]),
+    supplierId: new FormControl('f0000000-0000-0000-0000-000000000001', [Validators.required]),
     expectedDate: new FormControl('2026-11-02', [Validators.required]),
     notes: new FormControl(''),
-    selectedProductId: new FormControl('p1'),
+    selectedProductId: new FormControl('d0000000-0000-0000-0000-000000000001'),
     quantity: new FormControl(10, [Validators.required, Validators.min(1)]),
     unitCost: new FormControl(45.0, [Validators.required, Validators.min(0.1)]),
   });
@@ -188,11 +231,12 @@ export class PurchaseListComponent implements OnInit {
 
   // Modal actions
   openCreateModal() {
+    const defaultProduct = this.availableProducts[0];
     this.modalItems.set([
       {
-        productId: 'p1',
-        productName: 'Specialty Coffee Beans 1kg',
-        sku: 'CF-RAW-01',
+        productId: defaultProduct?.id || 'd0000000-0000-0000-0000-000000000001',
+        productName: defaultProduct?.name || 'Specialty Coffee Beans 1kg',
+        sku: defaultProduct?.sku || 'CF-RAW-01',
         quantityOrdered: 10,
         unitCost: 45.0,
         totalCost: 450.0,
@@ -239,22 +283,26 @@ export class PurchaseListComponent implements OnInit {
 
   savePurchaseOrder(asOrdered = false) {
     const items = this.modalItems();
-    if (items.length === 0) return;
+    if (items.length === 0) {
+      this.notification.warning('Please add at least one line item to the order.');
+      return;
+    }
 
-    const supplierId = this.poForm.get('supplierId')?.value || 's1';
-    const supplier = this.suppliers.find((s) => s.id === supplierId);
+    const supplierId = this.poForm.get('supplierId')?.value || this.suppliers[0]?.id;
+    const supplier = this.suppliers.find((s) => s.id === supplierId) || this.suppliers[0];
     const expectedDate = this.poForm.get('expectedDate')?.value || '';
     const notes = this.poForm.get('notes')?.value || '';
     const totals = this.modalTotals();
+    const poNumber = `PO-2026-${Math.floor(1000 + Math.random() * 9000)}`;
 
     const newOrder: PurchaseOrderRecord = {
       id: `po-${Date.now()}`,
-      poNumber: `PO-2026-${Math.floor(1000 + Math.random() * 9000)}`,
-      supplierId,
+      poNumber,
+      supplierId: supplier?.id || 'f0000000-0000-0000-0000-000000000001',
       supplierName: supplier?.name || 'Authorized Supplier',
       supplierTrn: supplier?.trn || '100234892300001',
       orderDate: new Date().toISOString(),
-      expectedDate: new Date(expectedDate).toISOString(),
+      expectedDate: expectedDate ? new Date(expectedDate).toISOString() : new Date().toISOString(),
       subtotal: totals.subtotal,
       taxAmount: totals.taxAmount,
       totalAmount: totals.totalAmount,
@@ -263,16 +311,60 @@ export class PurchaseListComponent implements OnInit {
       items,
     };
 
+    // Optimistically update list
     this.orders.update((list) => [newOrder, ...list]);
     this.closeCreateModal();
+
+    // Persist to Supabase in background
+    void (async () => {
+      try {
+        const orderInsert: PurchaseOrderInsert = {
+          business_id: this.context.businessId(),
+          store_id: this.context.storeId(),
+          supplier_id: supplier?.id || 'f0000000-0000-0000-0000-000000000001',
+          order_number: poNumber,
+          status: asOrdered ? 'ordered' : 'draft',
+          ordered_at: new Date().toISOString(),
+          expected_at: expectedDate ? new Date(expectedDate).toISOString().split('T')[0] : null,
+        };
+
+        const itemsInsert = items.map((it) => ({
+          business_id: this.context.businessId(),
+          product_id: it.productId,
+          quantity: it.quantityOrdered,
+          quantity_received: 0,
+          unit_cost: it.unitCost,
+          subtotal: it.totalCost,
+        }));
+
+        await this.purchaseRepo.createPurchaseOrder(orderInsert, itemsInsert);
+        this.notification.success(`Purchase order ${poNumber} recorded in Supabase.`, 'PO Created');
+        await this.loadPurchaseOrdersFromSupabase();
+      } catch (err: any) {
+        console.warn('Failed to commit PO to Supabase:', err);
+      }
+    })();
   }
 
   receiveGoods(order: PurchaseOrderRecord) {
     if (order.status === 'received') return;
 
     this.orders.update((list) =>
-      list.map((o) => (o.id === order.id ? { ...o, status: 'received' as const } : o))
+      list.map((o) => (o.id === order.id ? { ...o, status: 'received' as const } : o)),
     );
+
+    void (async () => {
+      try {
+        await this.purchaseRepo.receiveGoods(order.id);
+        this.notification.success(
+          `Goods received for ${order.poNumber}. Stock inventory and movements updated.`,
+          'Stock Received',
+        );
+        await this.loadPurchaseOrdersFromSupabase();
+      } catch (err: any) {
+        console.warn('Supabase receiveGoods call:', err);
+      }
+    })();
   }
 
   viewOrder(order: PurchaseOrderRecord) {

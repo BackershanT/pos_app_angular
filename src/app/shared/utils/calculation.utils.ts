@@ -122,6 +122,30 @@ export function calculateCartTotals(
 }
 
 /**
+ * Aggregates purchase order line costs into a net subtotal, recoverable input
+ * VAT and a gross payable amount. Kept separate from the cart calculation so a
+ * supplier order never inherits discount semantics.
+ */
+export interface ProcurementTotals {
+  subtotal: number;
+  taxAmount: number;
+  totalAmount: number;
+}
+
+export function calculateProcurementTotals(
+  lines: { quantity: number; unitCost: number }[],
+  vatRate = 0
+): ProcurementTotals {
+  const subtotal = lines.reduce(
+    (sum, line) => roundCurrency(sum + Math.max(0, line.quantity) * Math.max(0, line.unitCost)),
+    0,
+  );
+  const taxAmount = roundCurrency(subtotal * Math.max(0, vatRate));
+
+  return { subtotal, taxAmount, totalAmount: roundCurrency(subtotal + taxAmount) };
+}
+
+/**
  * Validates split payments (cash, card, etc.) against the required grand total.
  */
 export function validateSplitPayments(

@@ -2,77 +2,175 @@
   <!-- Header Bar -->
   <div class="page-header">
     <div>
-      <h2>Vendor & Supplier Directory</h2>
-      <p class="page-subtitle">Procurement channels, supplier TRN verification, and purchase contacts</p>
+      <h2>Vendor &amp; Supplier Directory</h2>
+      <p class="page-subtitle">
+        {{ context.businessName() }} • Procurement contacts, tax numbers and open purchase orders
+        counted live from the ledger
+      </p>
     </div>
-    <button class="btn-primary" (click)="openAddModal()">
-      <i class="pi pi-plus"></i>
-      <span>Add New Vendor</span>
-    </button>
+    <div class="page-actions">
+      <button type="button" class="btn-ghost" (click)="retryLoad()" [disabled]="listState.isLoading()">
+        <i class="pi pi-refresh" [class.pi-spin]="listState.isLoading()"></i>
+        <span>Refresh</span>
+      </button>
+      <button class="btn-primary" (click)="openAddModal()">
+        <i class="pi pi-plus"></i>
+        <span>Add New Vendor</span>
+      </button>
+    </div>
   </div>
+
+  @if (listState.isReady()) {
+    <div class="list-summary">
+      <span
+        ><strong>{{ summary().vendors }}</strong> vendors</span
+      >
+      <span
+        ><strong>{{ summary().openOrders }}</strong> open purchase orders</span
+      >
+      @if (summary().missingTrn > 0) {
+        <span class="summary-warn"
+          ><strong>{{ summary().missingTrn }}</strong> without a tax TRN</span
+        >
+      }
+    </div>
+  }
 
   <!-- Search Toolbar -->
   <div class="toolbar-card glass-panel">
-    <div class="search-input-wrap">
-      <i class="pi pi-search"></i>
-      <input
-        type="text"
-        placeholder="Search Supplier Name, Contact, or TRN..."
-        [value]="searchQuery()"
-        (input)="searchQuery.set($any($event.target).value); currentPage.set(1)"
-      />
+    <app-search-input
+      [value]="searchQuery()"
+      placeholder="Search supplier name, contact, email or TRN..."
+      width="100%"
+      maxWidth="380px"
+      (valueChange)="onSearch($event)"
+    />
+    @if (isFiltered()) {
+      <button type="button" class="filter-chip clear" (click)="clearFilters()">
+        <i class="pi pi-times"></i>
+        <span>Clear</span>
+      </button>
+    }
+    <div class="list-meta-count">
+      <span>Showing <strong>{{ totalRecords() }}</strong> of {{ suppliers().length }}</span>
     </div>
   </div>
 
-  <!-- Suppliers Table -->
-  <div class="table-container glass-panel">
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th>Supplier Company</th>
-          <th>Representative</th>
-          <th>Phone Contact</th>
-          <th>Email Address</th>
-          <th>Tax TRN</th>
-          <th>Active Orders</th>
-          <th>Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (s of paginatedSuppliers(); track s.id) {
+  <app-data-state
+    [state]="listState"
+    [isFiltered]="isFiltered()"
+    loadingMessage="Loading vendor directory..."
+    errorTitle="Vendor directory unavailable"
+    emptyTitle="No vendors registered yet"
+    emptyMessage="This business has no suppliers on file. Register the first vendor to start raising purchase orders."
+    emptyIcon="pi-briefcase"
+    (retry)="retryLoad()"
+  >
+    <!-- Suppliers Table -->
+    <div class="table-container glass-panel">
+      <table class="data-table">
+        <thead>
           <tr>
-            <td class="bold-cell">{{ s.name }}</td>
-            <td>{{ s.contactPerson }}</td>
-            <td class="phone-cell"><i class="pi pi-phone"></i> {{ s.phone }}</td>
-            <td class="email-cell">{{ s.email }}</td>
-            <td class="trn-cell"><i class="pi pi-shield"></i> {{ s.taxNumber }}</td>
-            <td>
-              <span class="order-badge" [class.has-orders]="s.activeOrders > 0">
-                {{ s.activeOrders }} orders pending
-              </span>
-            </td>
-            <td><span class="active-badge">Verified</span></td>
+            <th>Supplier Company</th>
+            <th>Representative</th>
+            <th>Phone Contact</th>
+            <th>Email Address</th>
+            <th>Tax TRN</th>
+            <th>Open Orders</th>
+            <th>Last Ordered</th>
+            <th></th>
           </tr>
-        }
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          @for (s of paginatedSuppliers(); track s.id) {
+            <tr>
+              <td class="bold-cell">{{ s.name }}</td>
+              <td>
+                @if (s.contactPerson) {
+                  {{ s.contactPerson }}
+                } @else {
+                  <span class="muted-cell">Not captured</span>
+                }
+              </td>
+              <td class="phone-cell">
+                @if (s.phone) {
+                  <i class="pi pi-phone"></i> {{ s.phone }}
+                } @else {
+                  <span class="muted-cell">Not captured</span>
+                }
+              </td>
+              <td class="email-cell">
+                @if (s.email) {
+                  {{ s.email }}
+                } @else {
+                  <span class="muted-cell">Not captured</span>
+                }
+              </td>
+              <td class="trn-cell">
+                @if (s.taxNumber) {
+                  <i class="pi pi-shield"></i> {{ s.taxNumber }}
+                } @else {
+                  <span class="muted-cell">No TRN on file</span>
+                }
+              </td>
+              <td>
+                <span class="order-badge" [class.has-orders]="s.openOrders > 0">
+                  {{ s.openOrders }} {{ s.openOrders === 1 ? 'order' : 'orders' }} open
+                </span>
+              </td>
+              <td>
+                @if (s.lastOrderAt) {
+                  {{ s.lastOrderAt | date: 'dd MMM yyyy' }}
+                } @else {
+                  <span class="muted-cell">Never ordered</span>
+                }
+              </td>
+              <td class="row-actions">
+                <button type="button" class="btn-table-edit" (click)="openAddModal(s)" title="Edit vendor">
+                  <i class="pi pi-pencil"></i>
+                </button>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="8" class="empty-table-cell">
+                <i class="pi pi-filter-slash"></i>
+                <span>No vendor matches your search.</span>
+                <button type="button" class="btn-ghost" (click)="clearFilters()">
+                  <i class="pi pi-times"></i>
+                  <span>Clear filters</span>
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
 
-    <app-pagination
-      [totalRecords]="totalRecords()"
-      [pageSize]="pageSize()"
-      [currentPage]="currentPage()"
-      (pageChange)="currentPage.set($event)"
-      (pageSizeChange)="pageSize.set($event)"
-    />
-  </div>
+      <app-pagination
+        [totalRecords]="totalRecords()"
+        [pageSize]="pageSize()"
+        [currentPage]="currentPage()"
+        (pageChange)="currentPage.set($event)"
+        (pageSizeChange)="pageSize.set($event)"
+      />
+    </div>
+  </app-data-state>
+
+  @if (activityTruncated()) {
+    <p class="form-note">
+      <i class="pi pi-exclamation-triangle"></i>
+      Order activity only covers the {{ scannedOrders() }} most recent purchase orders of this
+      business.
+    </p>
+  }
 </div>
 
-<!-- Add Supplier Modal -->
+<!-- Add / Edit Supplier Modal -->
 @if (isAddModalOpen()) {
   <div class="modal-backdrop" (click)="closeAddModal()">
     <div class="modal-card glass-panel" (click)="$event.stopPropagation()">
       <div class="modal-head">
-        <h3>Register New Vendor</h3>
+        <h3>{{ editingSupplier() ? 'Edit Vendor' : 'Register New Vendor' }}</h3>
         <button class="close-x" (click)="closeAddModal()">&times;</button>
       </div>
 
@@ -83,30 +181,48 @@
         </div>
 
         <div class="form-group">
-          <label>Contact Person *</label>
+          <label>Contact Person</label>
           <input type="text" formControlName="contactPerson" placeholder="e.g. Tariq Mansoor" />
         </div>
 
         <div class="form-group">
-          <label>Official Phone *</label>
+          <label>Official Phone</label>
           <input type="text" formControlName="phone" placeholder="+971 4 000 0000" />
         </div>
 
         <div class="form-group">
-          <label>Accounts Email *</label>
+          <label>Accounts Email</label>
           <input type="email" formControlName="email" placeholder="billing@vendor.ae" />
         </div>
 
         <div class="form-group">
-          <label>Supplier Tax TRN *</label>
-          <input type="text" formControlName="taxNumber" placeholder="100XXXXXXXXXXXX" />
+          <label>Supplier Tax TRN</label>
+          <input type="text" formControlName="taxNumber" placeholder="15 digit UAE tax registration number" />
+          @if (supplierForm.get('taxNumber')?.invalid && supplierForm.get('taxNumber')?.touched) {
+            <span class="field-error">TRN must be exactly 15 digits.</span>
+          }
         </div>
 
+        <p class="form-note">
+          <i class="pi pi-info-circle"></i>
+          Contact details are stored on the supplier record; open orders and last order date are
+          always counted from purchase orders.
+        </p>
+
+        @if (formError()) {
+          <div class="form-error" role="alert">
+            <i class="pi pi-exclamation-circle"></i>
+            <span>{{ formError() }}</span>
+          </div>
+        }
+
         <div class="modal-foot">
-          <button type="button" class="btn-cancel" (click)="closeAddModal()">Cancel</button>
-          <button type="submit" class="btn-save" [disabled]="supplierForm.invalid">
-            <i class="pi pi-check"></i>
-            <span>Register Vendor</span>
+          <button type="button" class="btn-cancel" (click)="closeAddModal()" [disabled]="isSaving()">
+            Cancel
+          </button>
+          <button type="submit" class="btn-save" [disabled]="supplierForm.invalid || isSaving()">
+            <i class="pi pi-check" [class.pi-spin]="isSaving()"></i>
+            <span>{{ isSaving() ? 'Saving...' : editingSupplier() ? 'Save Changes' : 'Register Vendor' }}</span>
           </button>
         </div>
       </form>

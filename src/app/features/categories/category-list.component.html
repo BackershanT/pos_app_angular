@@ -3,86 +3,150 @@
   <div class="page-header">
     <div>
       <h2>Category Master Management</h2>
-      <p class="page-subtitle">Organize product catalog, configure POS register quick-filter tabs, icons, and theme badges</p>
+      <p class="page-subtitle">
+        {{ context.businessName() }} • Names and descriptions are shared master data; register
+        quick-tabs appear automatically for categories with active SKUs
+      </p>
     </div>
-    <button class="btn-primary" (click)="openAddModal()">
-      <i class="pi pi-plus"></i>
-      <span>Add New Category</span>
-    </button>
+    <div class="page-actions">
+      <button type="button" class="btn-ghost" (click)="retryLoad()" [disabled]="listState.isLoading()">
+        <i class="pi pi-refresh" [class.pi-spin]="listState.isLoading()"></i>
+        <span>Refresh</span>
+      </button>
+      <button class="btn-primary" (click)="openAddModal()">
+        <i class="pi pi-plus"></i>
+        <span>Add New Category</span>
+      </button>
+    </div>
   </div>
+
+  <!-- Roll-up derived from the loaded rows only -->
+  @if (listState.isReady()) {
+    <div class="cat-summary">
+      <span
+        ><strong>{{ summary().categories }}</strong> categories</span
+      >
+      <span
+        ><strong>{{ summary().linked }}</strong> linked SKUs</span
+      >
+      <span
+        ><strong>{{ summary().sellable }}</strong> sellable on register</span
+      >
+      @if (summary().uncategorized > 0) {
+        <span class="summary-warn"
+          ><strong>{{ summary().uncategorized }}</strong> with no active products</span
+        >
+      }
+    </div>
+  }
 
   <!-- Search Toolbar -->
   <div class="toolbar-card glass-panel">
-    <div class="search-input-wrap">
-      <i class="pi pi-search"></i>
-      <input
-        type="text"
-        placeholder="Filter categories by name or code..."
-        [value]="searchQuery()"
-        (input)="onSearch($event)"
-      />
-    </div>
+    <app-search-input
+      [value]="searchQuery()"
+      placeholder="Filter categories by name, slug or description..."
+      width="100%"
+      maxWidth="380px"
+      (valueChange)="onSearch($event)"
+    />
+    @if (isFiltered()) {
+      <button type="button" class="filter-chip clear" (click)="clearFilters()">
+        <i class="pi pi-times"></i>
+        <span>Clear</span>
+      </button>
+    }
     <div class="category-meta-count">
-      <span>Total Categories: <strong>{{ totalRecords() }}</strong></span>
+      <span>Showing <strong>{{ totalRecords() }}</strong> of {{ categories().length }}</span>
     </div>
   </div>
 
   <!-- Categories Grid -->
-  <div class="categories-grid">
-    @for (cat of paginatedCategories(); track cat.id) {
-      <div class="cat-card glass-panel" [style.border-top-color]="cat.color">
-        <div class="cat-card-header">
-          <div class="cat-icon-avatar" [style.background]="cat.color + '22'" [style.color]="cat.color">
-            <i [class]="cat.icon"></i>
+  <app-data-state
+    [state]="listState"
+    [isFiltered]="isFiltered()"
+    loadingMessage="Loading category master data..."
+    errorTitle="Categories unavailable"
+    emptyTitle="No categories yet"
+    emptyMessage="This business has no categories stored. Create one to group the catalog and drive the register quick-tabs."
+    emptyIcon="pi-tags"
+    (retry)="retryLoad()"
+  >
+    <div class="categories-grid">
+      @for (cat of paginatedCategories(); track cat.id) {
+        <div class="cat-card glass-panel" [style.border-top-color]="cat.color">
+          <div class="cat-card-header">
+            <div class="cat-icon-avatar" [style.background]="cat.color + '22'" [style.color]="cat.color">
+              <i [class]="cat.icon"></i>
+            </div>
+            <div class="cat-card-title-group">
+              <h3>{{ cat.name }}</h3>
+              <span class="cat-code">{{ cat.code }}</span>
+            </div>
+            <button
+              type="button"
+              class="status-toggle-pill"
+              [class.active]="cat.activeProductCount > 0"
+              (click)="toggleVisibility(cat)"
+              [title]="
+                cat.activeProductCount > 0
+                  ? 'On the register: ' + cat.activeProductCount + ' active SKU(s)'
+                  : 'Not on the register: no active products in this category'
+              "
+            >
+              <span class="status-dot"></span>
+              <span>{{ cat.activeProductCount > 0 ? 'On register' : 'Hidden' }}</span>
+            </button>
           </div>
-          <div class="cat-card-title-group">
-            <h3>{{ cat.name }}</h3>
-            <span class="cat-code">{{ cat.code }}</span>
+
+          <p class="cat-desc">{{ cat.description || 'No description provided' }}</p>
+
+          <div class="cat-card-footer">
+            <div class="products-count-badge" [title]="'Scanned from the products table'">
+              <i class="pi pi-box"></i>
+              <span>{{ cat.productCount }} linked · {{ cat.activeProductCount }} active</span>
+            </div>
+            <div class="cat-actions">
+              <button class="action-btn" (click)="openAddModal(cat)" title="Edit Category">
+                <i class="pi pi-pencil"></i>
+              </button>
+              <button
+                class="action-btn delete"
+                (click)="deleteCategory(cat)"
+                [disabled]="isRetiring()"
+                title="Delete Category"
+              >
+                <i class="pi pi-trash"></i>
+              </button>
+            </div>
           </div>
-          <button
-            class="status-toggle-pill"
-            [class.active]="cat.isActive"
-            (click)="toggleActive(cat)"
-            [title]="cat.isActive ? 'Active on POS Register' : 'Inactive'"
-          >
-            <span class="status-dot"></span>
-            <span>{{ cat.isActive ? 'Active' : 'Disabled' }}</span>
+        </div>
+      } @empty {
+        <div class="empty-state-card glass-panel">
+          <i class="pi pi-filter-slash"></i>
+          <p>No category matches your search.</p>
+          <button type="button" class="btn-ghost" (click)="clearFilters()">
+            <i class="pi pi-times"></i>
+            <span>Clear filters</span>
           </button>
         </div>
+      }
+    </div>
 
-        <p class="cat-desc">{{ cat.description || 'No description provided' }}</p>
-
-        <div class="cat-card-footer">
-          <div class="products-count-badge">
-            <i class="pi pi-box"></i>
-            <span>{{ cat.productCount }} Products Linked</span>
-          </div>
-          <div class="cat-actions">
-            <button class="action-btn" (click)="openAddModal(cat)" title="Edit Category">
-              <i class="pi pi-pencil"></i>
-            </button>
-            <button class="action-btn delete" (click)="deleteCategory(cat)" title="Delete Category">
-              <i class="pi pi-trash"></i>
-            </button>
-          </div>
-        </div>
-      </div>
-    } @empty {
-      <div class="empty-state-card glass-panel">
-        <i class="pi pi-tags"></i>
-        <p>No categories found matching your query</p>
-      </div>
+    @if (totalRecords() > pageSize()) {
+      <app-pagination
+        [totalRecords]="totalRecords()"
+        [pageSize]="pageSize()"
+        [currentPage]="currentPage()"
+        (pageChange)="currentPage.set($event)"
+      />
     }
-  </div>
+  </app-data-state>
 
-  <!-- Pagination -->
-  @if (totalRecords() > pageSize()) {
-    <app-pagination
-      [totalRecords]="totalRecords()"
-      [pageSize]="pageSize()"
-      [currentPage]="currentPage()"
-      (pageChange)="currentPage.set($event)"
-    />
+  @if (countsTruncated()) {
+    <p class="form-note">
+      <i class="pi pi-exclamation-triangle"></i>
+      Linked-product counts only cover the first {{ scannedProducts() }} SKUs of this business.
+    </p>
   }
 </div>
 
@@ -99,26 +163,36 @@
       </div>
 
       <form [formGroup]="categoryForm" (ngSubmit)="saveCategory()" class="modal-body">
-        <div class="form-row">
-          <div class="form-group">
-            <label>Category Name *</label>
-            <input
-              type="text"
-              formControlName="name"
-              placeholder="e.g. Cold Brew & Teas"
-              class="form-input"
-              (input)="onNameChange($event)"
-            />
-          </div>
-          <div class="form-group">
-            <label>System Code / Slug *</label>
-            <input type="text" formControlName="code" placeholder="e.g. cold-brew-teas" class="form-input" />
-          </div>
+        <div class="form-group">
+          <label>Category Name *</label>
+          <input
+            type="text"
+            formControlName="name"
+            placeholder="e.g. Cold Brew &amp; Teas"
+            class="form-input"
+          />
         </div>
+
+        <div class="form-group">
+          <label>Description (Optional)</label>
+          <input
+            type="text"
+            formControlName="description"
+            placeholder="Brief operational notes for register staff"
+            class="form-input"
+          />
+          <span class="form-note">Stored in the shared categories table.</span>
+        </div>
+
+        <p class="theme-note">
+          <i class="pi pi-info-circle"></i>
+          Badge colour and icon are terminal preferences saved on this device only - the database
+          has no styling columns, so other registers keep their own look.
+        </p>
 
         <!-- Color Palette Picker -->
         <div class="form-group">
-          <label>Badge Color Accent *</label>
+          <label>Badge Color Accent</label>
           <div class="color-picker-row">
             @for (c of colorPalette; track c) {
               <button
@@ -138,7 +212,7 @@
 
         <!-- Icon Picker -->
         <div class="form-group">
-          <label>Category Icon *</label>
+          <label>Category Icon</label>
           <div class="icon-picker-row">
             @for (ico of iconChoices; track ico) {
               <button
@@ -153,28 +227,24 @@
           </div>
         </div>
 
-        <div class="form-group">
-          <label>Description (Optional)</label>
-          <input
-            type="text"
-            formControlName="description"
-            placeholder="Brief operational notes for register staff"
-            class="form-input"
-          />
-        </div>
-
-        <div class="form-group checkbox-row">
-          <label class="switch-label">
-            <input type="checkbox" formControlName="isActive" />
-            <span>Enable in POS Register Quick-Tabs</span>
-          </label>
-        </div>
+        @if (formError()) {
+          <div class="form-error" role="alert">
+            <i class="pi pi-exclamation-circle"></i>
+            <span>{{ formError() }}</span>
+          </div>
+        }
 
         <div class="modal-foot">
-          <button type="button" class="btn-cancel" (click)="closeModal()">Cancel</button>
-          <button type="submit" class="btn-save" [disabled]="categoryForm.invalid">
-            <i class="pi pi-check"></i>
-            <span>{{ editingCategory() ? 'Save Changes' : 'Create Category' }}</span>
+          <button type="button" class="btn-cancel" (click)="closeModal()" [disabled]="isSaving()">
+            Cancel
+          </button>
+          <button
+            type="submit"
+            class="btn-save"
+            [disabled]="categoryForm.invalid || isSaving()"
+          >
+            <i class="pi pi-check" [class.pi-spin]="isSaving()"></i>
+            <span>{{ isSaving() ? 'Saving...' : editingCategory() ? 'Save Changes' : 'Create Category' }}</span>
           </button>
         </div>
       </form>

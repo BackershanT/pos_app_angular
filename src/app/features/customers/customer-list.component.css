@@ -242,6 +242,108 @@
   cursor: not-allowed;
 }
 
+.category-meta-count {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.category-meta-count strong {
+  color: var(--primary-accent);
+}
+
+.cust-summary {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  padding: 0.75rem 1.15rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.cust-summary strong {
+  color: var(--text-main);
+  font-weight: 700;
+}
+
+.filter-chip.clear {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: var(--radius-full);
+  border: 1px dashed var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.filter-chip.clear:hover {
+  color: var(--text-main);
+  border-color: var(--primary);
+}
+
+.trn-chip {
+  margin-left: 0.5rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  color: #93c5fd;
+  font-size: 0.65rem;
+  font-family: monospace;
+  vertical-align: middle;
+}
+
+.muted-cell {
+  color: var(--text-dim);
+  font-size: 0.78rem;
+}
+
+.row-actions {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.btn-table-edit {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.75rem;
+  transition: all 0.2s;
+}
+
+.btn-table-edit:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-main);
+}
+
+.empty-table-cell {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  color: var(--text-muted);
+}
+
+.empty-table-cell i {
+  font-size: 1.5rem;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.empty-table-cell .btn-ghost {
+  margin-left: 0.75rem;
+}
+
 @media (max-width: 767px) {
   .page-header {
     flex-direction: column;

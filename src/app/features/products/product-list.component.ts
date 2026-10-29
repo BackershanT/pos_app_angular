@@ -94,7 +94,7 @@ export class ProductListComponent implements OnInit {
 
   async loadCategories() {
     try {
-      const data = await this.categoryRepo.getCategories();
+      const data = await this.categoryRepo.getCategories(this.context.businessId());
       this.categories.set(data.map((c) => ({ id: c.id, name: c.name })));
     } catch (err) {
       // The catalog can still render without filters, so this is non-blocking.

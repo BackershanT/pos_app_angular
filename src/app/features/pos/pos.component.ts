@@ -1,4 +1,4 @@
-import { Component, computed, effect, signal, OnInit, inject } from '@angular/core';
+import { Component, computed, effect, signal, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
@@ -154,7 +154,7 @@ function slugify(value: string): string {
   templateUrl: './pos.component.html',
   styleUrl: './pos.component.css',
 })
-export class PosComponent implements OnInit {
+export class PosComponent implements OnInit, OnDestroy {
   private readonly productRepo = inject(ProductRepository);
   private readonly categoryRepo = inject(CategoryRepository);
   private readonly orderRepo = inject(OrderRepository);
@@ -217,10 +217,18 @@ export class PosComponent implements OnInit {
     });
   });
   private loadedStoreId = '';
+  private cleanupRealtime?: () => void;
 
   async ngOnInit() {
     this.loadedStoreId = this.context.storeId();
     await this.loadCatalog();
+    this.cleanupRealtime = this.realtime.watch('store_inventory', () => {
+      void this.loadCatalog({ silent: true });
+    });
+  }
+
+  ngOnDestroy() {
+    this.cleanupRealtime?.();
   }
 
   /**
@@ -242,7 +250,7 @@ export class PosComponent implements OnInit {
           this.productRepo.getBranchCatalog(storeId, {
             limit: environment.pos.catalogPageSize,
           }),
-          this.categoryRepo.getCategories(),
+          this.categoryRepo.getCategories(this.context.businessId()),
         ]);
 
         this._categories.set([

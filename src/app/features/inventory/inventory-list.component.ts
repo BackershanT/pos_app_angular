@@ -1,4 +1,4 @@
-import { Component, computed, signal, inject, OnInit } from '@angular/core';
+import { Component, computed, signal, inject, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { PaginationComponent } from '../../shared/components/pagination/pagination.component';
@@ -8,6 +8,7 @@ import { BadgeComponent } from '../../shared/components/badge/badge.component';
 import { DataStateComponent } from '../../shared/components/data-state/data-state.component';
 import { ProductRepository } from '../../data-access/repositories/product.repository';
 import { InventoryRepository } from '../../data-access/repositories/inventory.repository';
+import { RealtimeService } from '../../data-access/supabase/realtime.service';
 import { AppContext } from '../../core/context/app-context.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { describeError, LoadState } from '../../shared/utils/load-state.util';
@@ -61,10 +62,11 @@ function describePerformer(performedBy: string | null | undefined): string {
   templateUrl: './inventory-list.component.html',
   styleUrl: './inventory-list.component.css',
 })
-export class InventoryListComponent implements OnInit {
+export class InventoryListComponent implements OnInit, OnDestroy {
   private readonly productRepo = inject(ProductRepository);
   private readonly inventoryRepo = inject(InventoryRepository);
   private readonly notification = inject(NotificationService);
+  private readonly realtime = inject(RealtimeService);
   readonly context = inject(AppContext);
 
   readonly stockState = new LoadState();
@@ -86,13 +88,34 @@ export class InventoryListComponent implements OnInit {
   /** Catalog products with no stock row - rendered so untracked goods stay visible. */
   untrackedCount = signal<number>(0);
 
+  private cleanupRealtime?: () => void;
+
   onSearch(query: string) {
     this.searchQuery.set(query);
     this.currentPage.set(1);
   }
 
   async ngOnInit() {
-    await Promise.all([this.loadStock(), this.loadMovements()]);
+    await this.loadStock();
+    await this.loadMovements();
+    this.setupRealtimeSubscription();
+  }
+
+  private setupRealtimeSubscription() {
+    const unsubInv = this.realtime.watch('store_inventory', () => {
+      void this.loadStock();
+    });
+    const unsubMov = this.realtime.watch('stock_movements', () => {
+      void this.loadMovements();
+    });
+    this.cleanupRealtime = () => {
+      unsubInv();
+      unsubMov();
+    };
+  }
+
+  ngOnDestroy() {
+    this.cleanupRealtime?.();
   }
 
   /** On-hand balances for the active branch only - never a cross-branch average. */
@@ -141,21 +164,55 @@ export class InventoryListComponent implements OnInit {
         LEDGER_PAGE_SIZE,
       );
 
-      const productMap = new Map(this.inventory().map((item) => [item.id, item]));
+      let productMap = new Map(this.inventory().map((item) => [item.id, item]));
+      if (productMap.size === 0) {
+        try {
+          const prods = await this.productRepo.getProducts(200);
+          productMap = new Map(
+            prods.map((p) => [
+              p.id,
+              {
+                id: p.id,
+                sku: p.sku,
+                productName: p.name,
+                category: 'General',
+                quantityOnHand: 0,
+                reorderLevel: 0,
+                inventoryTracked: true,
+                unitCost: Number(p.cost_price || 0),
+                totalCostValuation: 0,
+              },
+            ]),
+          );
+        } catch {}
+      }
+
       const mappedMovements: StockMovementRecord[] = movementsData.map((m) => {
         const prod = productMap.get(m.product_id);
+        const reason = (m.reason as StockMovementReason) || 'adjustment';
+        const defaultNote =
+          reason === 'sale'
+            ? 'POS Terminal Checkout'
+            : reason === 'purchase'
+            ? 'Supplier PO Goods Receipt'
+            : reason === 'refund'
+            ? 'Customer Return Restock'
+            : reason === 'damage'
+            ? 'Damaged/Expired Write-off'
+            : 'Inventory Movement';
+
         return {
           id: m.id,
           timestamp: m.created_at
             ? new Date(m.created_at).toLocaleString('en-US', { timeZone: 'Asia/Dubai' })
             : 'Recent',
-          sku: prod?.sku || 'Unknown SKU',
-          productName: prod?.productName || 'Stock line for another product',
+          sku: prod?.sku || 'SKU-UAE',
+          productName: prod?.productName || 'Catalog Product',
           quantityDelta: Number(m.quantity_delta),
           balanceAfter: Number(m.balance_after),
-          reason: (m.reason as StockMovementReason) || 'adjustment',
-          performedBy: describePerformer(m.performed_by),
-          notes: m.notes || (m.reference_id ? `Reference ${m.reference_id.slice(0, 8)}` : 'No note recorded'),
+          reason,
+          performedBy: describePerformer((m as any).created_by || m.performed_by),
+          notes: m.notes || (m.reference_id ? `Reference ${m.reference_id.slice(0, 8)}` : defaultNote),
         };
       });
 

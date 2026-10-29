@@ -33,6 +33,8 @@ describe('PurchaseListComponent', () => {
         },
       ],
     }),
+    createPurchaseOrder: vi.fn().mockResolvedValue({ id: 'po-001', order_number: 'PO-2026-0041' }),
+    receiveGoods: vi.fn().mockResolvedValue({ success: true }),
   };
 
   const mockSupplierRepo = {

@@ -108,6 +108,10 @@ export class LoadState {
  * Translates Postgres/PostgREST/network failures into operator-facing copy.
  * Raw database strings are never shown to cashiers, but the cause class must be
  * distinguishable so support can triage from a screenshot.
+ *
+ * Ordering matters: repositories wrap every failure in "Failed to fetch X: ...",
+ * so a transport problem can only be recognised by its own error type or by the
+ * phrases the SDK actually throws - never by the substring "failed to fetch".
  */
 export function describeError(err: unknown): string {
   if (!(err instanceof Error)) {
@@ -117,8 +121,15 @@ export function describeError(err: unknown): string {
   const message = err.message || 'Unknown error';
   const lower = message.toLowerCase();
 
-  // Network layer down (SDK throws TypeError: Failed to fetch).
-  if (lower.includes('failed to fetch') || lower.includes('networkerror') || lower.includes('load failed')) {
+  // Network layer down (browsers reject fetch with a TypeError).
+  if (
+    (err instanceof TypeError && lower.includes('failed to fetch')) ||
+    lower.includes('networkerror') ||
+    lower.includes('fetch failed') ||
+    lower.includes('load failed') ||
+    lower.includes('econnrefused') ||
+    lower.includes('network request failed')
+  ) {
     return 'Cannot reach the cloud backend. The register keeps working offline for cached records only.';
   }
 
@@ -135,6 +146,16 @@ export function describeError(err: unknown): string {
   // Missing relation / stale schema (42P01, 42703).
   if (lower.includes('does not exist') || lower.includes('could not find the relationship')) {
     return 'The database schema is out of date with this build. Ask an administrator to apply the latest migration.';
+  }
+
+  // Missing server-side function (PGRST202). Stock moves, sale completion and
+  // invoice numbering are all RPCs, so this must read as a deployment gap.
+  if (
+    lower.includes('pgrst202') ||
+    lower.includes('could not find the function') ||
+    lower.includes('schema cache')
+  ) {
+    return 'This operation needs a database function that is not installed on this project. Apply the latest migration and reload the schema cache.';
   }
 
   // .single() with zero rows (PGRST116).

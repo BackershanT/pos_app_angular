@@ -2,78 +2,181 @@
   <!-- Header Bar -->
   <div class="page-header">
     <div>
-      <h2>Customer Accounts & Loyalty CRM</h2>
-      <p class="page-subtitle">Manage customer profiles, loyalty balance, and purchase frequency</p>
+      <h2>Customer Accounts &amp; Loyalty CRM</h2>
+      <p class="page-subtitle">
+        {{ context.businessName() }} • Profiles, loyalty balance and purchase history read live from
+        the sales ledger
+      </p>
     </div>
-    <button class="btn-primary" (click)="openAddModal()">
-      <i class="pi pi-user-plus"></i>
-      <span>Add New Customer</span>
-    </button>
+    <div class="page-actions">
+      <button type="button" class="btn-ghost" (click)="retryLoad()" [disabled]="listState.isLoading()">
+        <i class="pi pi-refresh" [class.pi-spin]="listState.isLoading()"></i>
+        <span>Refresh</span>
+      </button>
+      <button class="btn-primary" (click)="openAddModal()">
+        <i class="pi pi-user-plus"></i>
+        <span>Add New Customer</span>
+      </button>
+    </div>
   </div>
+
+  <!-- Directory roll-up, derived from the rows actually loaded -->
+  @if (listState.isReady()) {
+    <div class="cust-summary">
+      <span
+        ><strong>{{ summary().customers }}</strong> customers</span
+      >
+      <span
+        ><strong>{{ summary().withHistory }}</strong> with purchase history</span
+      >
+      <span
+        >Lifetime <strong>{{ summary().lifetimeSpent | number: '1.2-2' }}</strong>
+        {{ context.currency() }}</span
+      >
+      <span
+        >Loyalty outstanding <strong>{{ summary().loyaltyOutstanding | number: '1.0-0' }}</strong>
+        pts</span
+      >
+    </div>
+  }
 
   <!-- Search Toolbar -->
   <div class="toolbar-card glass-panel">
-    <div class="search-input-wrap">
-      <i class="pi pi-search"></i>
-      <input
-        type="text"
-        placeholder="Search by Name, Phone, or Email..."
-        [value]="searchQuery()"
-        (input)="searchQuery.set($any($event.target).value); currentPage.set(1)"
-      />
+    <app-search-input
+      [value]="searchQuery()"
+      placeholder="Search by name, phone, email or TRN..."
+      width="100%"
+      maxWidth="380px"
+      (valueChange)="onSearch($event)"
+    />
+    @if (isFiltered()) {
+      <button type="button" class="filter-chip clear" (click)="clearFilters()">
+        <i class="pi pi-times"></i>
+        <span>Clear</span>
+      </button>
+    }
+    <div class="category-meta-count">
+      <span>Showing <strong>{{ totalRecords() }}</strong> of {{ customers().length }}</span>
     </div>
   </div>
 
-  <!-- Customers Table -->
-  <div class="table-container glass-panel">
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th>Customer Name</th>
-          <th>Phone Number</th>
-          <th>Email Address</th>
-          <th>Loyalty Points</th>
-          <th>Total Visits</th>
-          <th>Lifetime Spent</th>
-          <th>Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (c of paginatedCustomers(); track c.id) {
+  <app-data-state
+    [state]="listState"
+    [isFiltered]="isFiltered()"
+    loadingMessage="Loading customer directory..."
+    errorTitle="Customer directory unavailable"
+    emptyTitle="No customers registered yet"
+    emptyMessage="This business has no customer records. Register a walk-in to start tracking loyalty and purchase history."
+    emptyIcon="pi-users"
+    (retry)="retryLoad()"
+  >
+    <!-- Customers Table -->
+    <div class="table-container glass-panel">
+      <table class="data-table">
+        <thead>
           <tr>
-            <td class="bold-cell">{{ c.name }}</td>
-            <td class="phone-cell"><i class="pi pi-phone"></i> {{ c.phone }}</td>
-            <td class="email-cell">{{ c.email }}</td>
-            <td>
-              <span class="loyalty-badge">
-                <i class="pi pi-star-fill"></i>
-                {{ c.loyaltyPoints }} pts
-              </span>
-            </td>
-            <td>{{ c.totalOrders }} orders</td>
-            <td class="spent-cell">{{ c.totalSpent | number:'1.2-2' }} AED</td>
-            <td><span class="active-badge">Active</span></td>
+            <th>Customer Name</th>
+            <th>Phone Number</th>
+            <th>Email Address</th>
+            <th>Loyalty Points</th>
+            <th>Purchases</th>
+            <th>Lifetime Spent</th>
+            <th>Last Visit</th>
+            <th></th>
           </tr>
-        }
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          @for (c of paginatedCustomers(); track c.id) {
+            <tr>
+              <td class="bold-cell">
+                {{ c.name }}
+                @if (c.taxId) {
+                  <span class="trn-chip" title="VAT tax registration number">{{ c.taxId }}</span>
+                }
+              </td>
+              <td class="phone-cell">
+                @if (c.phone) {
+                  <i class="pi pi-phone"></i> {{ c.phone }}
+                } @else {
+                  <span class="muted-cell">Not captured</span>
+                }
+              </td>
+              <td class="email-cell">
+                @if (c.email) {
+                  {{ c.email }}
+                } @else {
+                  <span class="muted-cell">Not captured</span>
+                }
+              </td>
+              <td>
+                @if (c.loyaltyPoints > 0) {
+                  <span class="loyalty-badge">
+                    <i class="pi pi-star-fill"></i>
+                    {{ c.loyaltyPoints | number: '1.0-2' }} pts
+                  </span>
+                } @else {
+                  <span class="muted-cell">0 pts</span>
+                }
+              </td>
+              <td [class]="c.totalOrders === 0 ? 'muted-cell' : ''">
+                {{ visitLabel(c) }}
+              </td>
+              <td class="spent-cell">
+                {{ c.totalSpent | number: '1.2-2' }} {{ context.currency() }}
+              </td>
+              <td>
+                @if (c.lastVisit) {
+                  {{ c.lastVisit | date: 'dd MMM yyyy' }}
+                } @else {
+                  <span class="muted-cell">Never</span>
+                }
+              </td>
+              <td class="row-actions">
+                <button type="button" class="btn-table-edit" (click)="openAddModal(c)" title="Edit customer">
+                  <i class="pi pi-pencil"></i>
+                </button>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="8" class="empty-table-cell">
+                <i class="pi pi-filter-slash"></i>
+                <span>No customer matches your search.</span>
+                <button type="button" class="btn-ghost" (click)="clearFilters()">
+                  <i class="pi pi-times"></i>
+                  <span>Clear filters</span>
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
 
-    <app-pagination
-      [totalRecords]="totalRecords()"
-      [pageSize]="pageSize()"
-      [currentPage]="currentPage()"
-      (pageChange)="currentPage.set($event)"
-      (pageSizeChange)="pageSize.set($event)"
-    />
-  </div>
+      <app-pagination
+        [totalRecords]="totalRecords()"
+        [pageSize]="pageSize()"
+        [currentPage]="currentPage()"
+        (pageChange)="currentPage.set($event)"
+        (pageSizeChange)="pageSize.set($event)"
+      />
+    </div>
+  </app-data-state>
+
+  @if (statsTruncated()) {
+    <p class="form-note">
+      <i class="pi pi-exclamation-triangle"></i>
+      Purchase history and lifetime spend only cover the {{ scannedSales() }} most recent tickets of
+      this business.
+    </p>
+  }
 </div>
 
-<!-- Add Customer Modal -->
+<!-- Add / Edit Customer Modal -->
 @if (isAddModalOpen()) {
   <div class="modal-backdrop" (click)="closeAddModal()">
     <div class="modal-card glass-panel" (click)="$event.stopPropagation()">
       <div class="modal-head">
-        <h3>Register New Customer</h3>
+        <h3>{{ editingCustomer() ? 'Edit Customer' : 'Register New Customer' }}</h3>
         <button class="close-x" (click)="closeAddModal()">&times;</button>
       </div>
 
@@ -84,7 +187,7 @@
         </div>
 
         <div class="form-group">
-          <label>Mobile Number (with country code) *</label>
+          <label>Mobile Number</label>
           <input type="text" formControlName="phone" placeholder="+971 50 123 4567" />
         </div>
 
@@ -98,11 +201,31 @@
           <input type="text" formControlName="taxId" placeholder="100XXXXXXXXXXXX" />
         </div>
 
+        <div class="form-group">
+          <label>Internal Notes</label>
+          <input type="text" formControlName="notes" placeholder="Delivery days, preferences..." />
+        </div>
+
+        <p class="form-note">
+          <i class="pi pi-info-circle"></i>
+          Loyalty points and purchase history are earned at the register - new customers start at 0
+          points.
+        </p>
+
+        @if (formError()) {
+          <div class="form-error" role="alert">
+            <i class="pi pi-exclamation-circle"></i>
+            <span>{{ formError() }}</span>
+          </div>
+        }
+
         <div class="modal-foot">
-          <button type="button" class="btn-cancel" (click)="closeAddModal()">Cancel</button>
-          <button type="submit" class="btn-save" [disabled]="customerForm.invalid">
-            <i class="pi pi-check"></i>
-            <span>Register & Award 50 Pts</span>
+          <button type="button" class="btn-cancel" (click)="closeAddModal()" [disabled]="isSaving()">
+            Cancel
+          </button>
+          <button type="submit" class="btn-save" [disabled]="customerForm.invalid || isSaving()">
+            <i class="pi pi-check" [class.pi-spin]="isSaving()"></i>
+            <span>{{ isSaving() ? 'Saving...' : editingCustomer() ? 'Save Changes' : 'Register Customer' }}</span>
           </button>
         </div>
       </form>

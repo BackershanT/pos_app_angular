@@ -329,3 +329,116 @@ div[id*="netlify"],
     transform: rotate(360deg);
   }
 }
+
+/* ---------------------------------------------------------------
+   Shared list/data-grid primitives (customers, suppliers, purchases,
+   sales, inventory) so every feature states totals, missing values and
+   filter affordances the same way instead of re-styling per screen.
+   --------------------------------------------------------------- */
+.list-summary {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  padding: 0.75rem 1.15rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.list-summary strong {
+  color: var(--text-main);
+  font-weight: 700;
+}
+
+.list-summary .summary-warn {
+  color: #fbbf24;
+}
+
+.list-meta-count {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  margin-left: auto;
+}
+
+.list-meta-count strong {
+  color: var(--primary-accent);
+}
+
+/* Explicit "this value was never captured" marker - never a fake placeholder. */
+.muted-cell {
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  font-style: italic;
+}
+
+.row-actions {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.btn-table-edit {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.75rem;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+
+.btn-table-edit:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-main);
+}
+
+.btn-table-edit.danger:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.18);
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+.empty-table-cell {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  color: var(--text-muted);
+}
+
+.empty-table-cell i {
+  font-size: 1.5rem;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.empty-table-cell .btn-ghost {
+  margin-left: 0.75rem;
+}
+
+.filter-chip.clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  border: 1px dashed var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.filter-chip.clear:hover {
+  color: var(--text-main);
+  border-color: var(--primary);
+}
+
+.field-error {
+  font-size: 0.72rem;
+  color: #fca5a5;
+}

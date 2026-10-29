@@ -93,6 +93,7 @@ export class PurchaseRepository extends BaseRepository {
     if (items.length > 0) {
       const itemsToInsert = items.map((item) => ({
         ...item,
+        business_id: orderRecord.business_id,
         purchase_order_id: orderRecord.id,
       }));
 
